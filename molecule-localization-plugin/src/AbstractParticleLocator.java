@@ -32,6 +32,7 @@ import ij.ImageStack;
 import ij.Prefs;
 import ij.gui.GenericDialog;
 import ij.measure.ResultsTable;
+import ij.plugin.filter.Analyzer;
 import ij.process.ImageProcessor;
 
 /**
@@ -113,7 +114,7 @@ public abstract class AbstractParticleLocator implements SettingsDialog {
         
         // initialize the plug-in components
         this.stack = stack;
-        results = new ResultsTable();
+        results = Analyzer.getResultsTable();
         localizations = 0;
         debugStack = new ImageStack(stack.getWidth(), stack.getHeight());
         noiseEstimator = new BackgroundNoise();
