@@ -23,14 +23,13 @@
 import java.awt.Font;
 import java.awt.Point;
 
-import Jama.EigenvalueDecomposition;
-import Jama.Matrix;
 import ij.IJ;
 import ij.Prefs;
 import ij.gui.GenericDialog;
 import ij.process.ImageProcessor;
 
 import static java.lang.Math.abs;
+import static java.lang.Math.sqrt;
 
 /**
  * This class rejects a location based on it's ellipticity.
@@ -118,16 +117,16 @@ implements ImageProcess, SettingsDialog, DebugStats {
     }
 
     private static double[] findEigenValues(final double[] moment) {
-        final double[][] dmat = new double[2][2];
         
-        dmat[0][0] = moment[0];
-        dmat[1][1] = moment[1];
-        dmat[0][1] = moment[2];
-        dmat[1][0] = moment[2];
+        final double[] eigenValues = {0.0, 0.0};
+        final double first = moment[0] + moment[1];
+        final double diff = moment[0] - moment[1];
+        final double last = sqrt(4.0 * moment[2] * moment[2] + diff * diff);
         
-        final Matrix matrix = new Matrix(dmat);
+        eigenValues[0] = (first + last) / 2.0;
+        eigenValues[1] = (first - last) / 2.0;
         
-        return new EigenvalueDecomposition(matrix).getRealEigenvalues();
+        return eigenValues;
     }
 
     private static double[] findSecondMoments(final ImageContext context,
@@ -143,14 +142,11 @@ implements ImageProcess, SettingsDialog, DebugStats {
         for (int x = window.left; x <= window.right; x++) {
             for (int y = window.top; y <= window.bottom; y++) {
                 
-                final int intensity = image.get(x, y);
+                final double intensity = image.get(x, y) - context.getEstimatedNoise();
                 
-                final double deltaX = x - centroid[0];
-                final double deltaY = y - centroid[1];
-                
-                moment[0] += intensity * deltaX * deltaX;
-                moment[1] += intensity * deltaY * deltaY;
-                moment[2] += intensity * deltaX * deltaY;
+                moment[0] += intensity * x * x;
+                moment[1] += intensity * y * y;
+                moment[2] += intensity * x * y;
                 
                 sum += intensity;
             }
@@ -160,6 +156,10 @@ implements ImageProcess, SettingsDialog, DebugStats {
         for (int i = 0; i < moment.length; i++) {
             moment[i] /= sum;
         }
+        
+        moment[0] -= centroid[0]*centroid[0];
+        moment[1] -= centroid[1]*centroid[1];
+        moment[2] -= centroid[0]*centroid[1];
         
         return moment;
     }
@@ -176,7 +176,7 @@ implements ImageProcess, SettingsDialog, DebugStats {
         for (int x = window.left; x <= window.right; x++) {
             for (int y = window.top; y <= window.bottom; y++) {
                 
-                final int intensity = image.get(x, y);
+                final double intensity = image.get(x, y) - context.getEstimatedNoise();
                 
                 centroid[0] += intensity * x;
                 centroid[1] += intensity * y;
