@@ -372,6 +372,8 @@ public abstract class AbstractParticleLocator implements SettingsDialog {
                             centroid.getX() * getPixelSize());
                     results.addValue("Y (nm)", 
                             centroid.getY() * getPixelSize());
+                    results.addValue("Intensity",
+                            context.getPhotonCount());
                 }
                 
                 // add to reconstructed image

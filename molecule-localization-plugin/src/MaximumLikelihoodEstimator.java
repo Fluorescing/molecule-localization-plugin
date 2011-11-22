@@ -113,14 +113,17 @@ implements ImageProcess, SettingsDialog, DebugStats {
             return false;
         }
         
+        double sum = 0.0;
         double[] xData = zeros(width);
         double[] yData = zeros(height);
         
         // accumulate pixel intensities down to single row and column
         for (int x = 0; x < width; x++) {
             for (int y = 0; y < height; y++) {
-                xData[x] += image.get(x + left, y + top) / photonScale;
-                yData[y] += image.get(x + left, y + top) / photonScale;
+                final double S = image.get(x + left, y + top) / photonScale;
+                xData[x] += S;
+                yData[y] += S;
+                sum += S;
             }
         }
         
@@ -192,10 +195,14 @@ implements ImageProcess, SettingsDialog, DebugStats {
                         location.x - 3,
                         location.x + 3));
         
+        // set the current centroid and photon count estimate
         context.setCentroid(
                 new Coordinates(
                         xResult / pixelSize + left + width / 2.0,
                         yResult / pixelSize + top + height / 2.0));
+        
+        context.setPhotonCount(sum 
+                - context.getEstimatedNoise() * width * height / photonScale);
         
         return true;
     }

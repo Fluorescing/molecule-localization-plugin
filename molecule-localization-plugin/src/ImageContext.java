@@ -33,6 +33,7 @@ public class ImageContext {
     private boolean[][] maskDone;
     private final double noise;        // estimated background noise
     private Coordinates centroid;
+    private double photoncount;
     private Window window;
     
     private final AbstractParticleLocator mLocator;
@@ -176,6 +177,14 @@ public class ImageContext {
     }
     
     /**
+     * Sets the current photon count estimate to the specified value.
+     * @param estimate the estimated photon count per molecule
+     */
+    public void setPhotonCount(final double estimate) {
+        photoncount = estimate;
+    }
+    
+    /**
      * Sets the current window to the specified window.  Set to null to clear.
      * @param window the specified window
      */
@@ -189,6 +198,14 @@ public class ImageContext {
      */
     public Coordinates getCentroid() {
         return centroid;
+    }
+    
+    /**
+     * Get the current photon count estimate to the specified value.
+     * @return the estimated photon count
+     */
+    public double getPhotonCount() {
+        return photoncount;
     }
     
     /**
