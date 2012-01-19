@@ -29,13 +29,10 @@ import ij.process.ImageProcessor;
 import java.awt.Font;
 import java.awt.Point;
 
-import org.apache.commons.math.MathException;
-
 import static java.lang.Math.PI;
 import static java.lang.Math.pow;
 import static java.lang.Math.sqrt;
 import static java.lang.Math.exp;
-import static org.apache.commons.math.special.Erf.erf;
 
 /**
  * The maximum likelihood estimator.
@@ -403,12 +400,8 @@ implements ImageProcess, SettingsDialog, DebugStats {
             final double firstTerm = sqrt(sigma) * (p - usablePixel / 2);
             final double secondTerm = sqrt(sigma) * (p + usablePixel / 2);
             
-            try {
-                expectedCount[i - 1] = 
-                        PI / 2 / sigma * (erf(secondTerm) - erf(firstTerm));
-            } catch (MathException e) {
-                IJ.error("MaximumLikelyhoodEstimator", "erf error!");
-            }
+            expectedCount[i - 1] = 
+                    PI / 2 / sigma * (erf(secondTerm) - erf(firstTerm));
         }
         
         return expectedCount;
@@ -434,6 +427,29 @@ implements ImageProcess, SettingsDialog, DebugStats {
             }
         }
         return max;
+    }
+    
+    // fast error function approximation
+    private static double erf(double x) {
+        final double v = Math.abs(x);
+        
+        final double p = 0.3275911;
+        final double t = 1.0/(1.0 + p*v);
+        final double t2 = t*t;
+        final double t3 = t2*t;
+        final double t4 = t3*t;
+        final double t5 = t4*t;
+        final double a1 =  0.254829592 * t;
+        final double a2 = -0.284496736 * t2;
+        final double a3 =  1.421413741 * t3;
+        final double a4 = -1.453152027 * t4;
+        final double a5 =  1.061405429 * t5;
+        final double result = 1.0 - (a1 + a2 + a3 + a4 + a5) * Math.exp(-v*v);
+        
+        if (x < 0)
+            return -result;
+        
+        return result;
     }
 
     @Override
