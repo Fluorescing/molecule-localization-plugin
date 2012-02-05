@@ -127,60 +127,42 @@ implements ImageProcess, SettingsDialog, DebugStats {
         // estimate the initial center of mass
         pixelSize = context.getLocatorContext().getPixelSize();
         final double cmX = 
-                (findCenterOfMass(xData, bgNoise * height) - width / 2.0) 
-                    * pixelSize;
+                (findCenterOfMass(xData, bgNoise * height)) * pixelSize;
         final double cmY = 
-                (findCenterOfMass(yData, bgNoise * width) - height / 2.0) 
-                    * pixelSize;
+                (findCenterOfMass(yData, bgNoise * width)) * pixelSize;
         
         // run MLE for x position
         final double photonCoeffX = (max(xData) - min(xData))
-                / max(findExpectedCount(cmX, width));
-        
-        //final double photonCoeffX = 
-        //        (sum(xData) - bgNoise * width * height) 
-        //        / sum (findExpectedCount(cmX, width));
+                / max(findExpectedCount(cmX, width, height));
         
         synchronized (this) {
             intensityCoeff += photonCoeffX;
         }
         
-        final double xResult = 
-                runMaximumLikelyhoodEstimator(
-                        cmX, 
-                        photonCoeffX, 
-                        bgNoise, 
-                        xData);
-
-        // run MLE for y position
-        final double photonCoeffY = (max(yData) - min(yData)) 
-                / max(findExpectedCount(cmY, height));
+        double[] params = {cmX, photonCoeffX, bgNoise};
         
-        //final double photonCoeffY = 
-        //        (sum(yData) - bgNoise * width * height) 
-        //         / sum (findExpectedCount(cmY, height));
+        // get x estimates
+        runMaximumLikelyhoodEstimator(params, xData, height);
+        final double xResult = params[0];
         
-        final double yResult = 
-                runMaximumLikelyhoodEstimator(
-                        cmY, 
-                        photonCoeffY, 
-                        bgNoise, 
-                        yData); 
+        final double photonCoeffY = (max(yData) - min(yData))
+                / max(findExpectedCount(cmY, height, width));
         
+        // update just the y-position
+        params[0] = cmY;
+        params[1] = photonCoeffY;
+        params[2] = bgNoise;
+        
+        // get y estimates
+        runMaximumLikelyhoodEstimator(params, yData, width); 
+        final double yResult = params[0];
         
         if (Double.isNaN(xResult) || Double.isNaN(yResult)) {
             return false;
         }
         
-        //if (Math.hypot(xResult - cmX, yResult - cmY) > mPixelSize) {
-        //    return false;
-        //}
-        
-        final double xBorder = width * pixelSize / 2;
-        final double yBorder = height * pixelSize / 2;
-        
-        if (xResult <= -xBorder || xResult >= xBorder
-                || yResult <= -yBorder || yResult >= yBorder) {
+        if (xResult < 0.0 || xResult > width * pixelSize
+                || yResult < 0.0 || yResult > height * pixelSize) {
             return false;
         }
         
@@ -195,8 +177,8 @@ implements ImageProcess, SettingsDialog, DebugStats {
         // set the current centroid and photon count estimate
         context.setCentroid(
                 new Coordinates(
-                        xResult / pixelSize + left + width / 2.0,
-                        yResult / pixelSize + top + height / 2.0));
+                        xResult / pixelSize + left,
+                        yResult / pixelSize + top));
         
         context.setPhotonCount(sum 
                 - context.getEstimatedNoise() * width * height / photonScale);
@@ -220,7 +202,7 @@ implements ImageProcess, SettingsDialog, DebugStats {
         double sum = 0;
         
         for (int i = 0; i < data.length; i++) {
-            center += Math.max(data[i] - bgNoise, 0) * (i + 1);
+            center += Math.max(data[i] - bgNoise, 0) * (i + 0.5);
             sum += Math.max(data[i] - bgNoise, 0);
         }
         
@@ -230,98 +212,84 @@ implements ImageProcess, SettingsDialog, DebugStats {
     /**
      * Estimates the position of the particle along one axis based on the data
      * provided.
-     * @param position the estimated position of the particle
-     * @param photonCoefficient the photon coefficient found
-     * @param background the number of photon counts in the background
+     * @param params the estimated position of the particle, the photon 
+     * coefficient found, and the number of photon counts in the background
      * @param data the summation of photon counts along rows or columns
-     * @return the position of the particle along one axis
+     * @param length the number of elements summed up to obtain the data array
      */
-    private double runMaximumLikelyhoodEstimator(
-            final double position,
-            final double photonCoefficient,
-            final double background,
-            final double[] data) {
+    private void runMaximumLikelyhoodEstimator(final double[] params,
+                                               final double[] data,
+                                               final double length) {
         
         synchronized (this) {
             totalAttempts++;
         }
         
-        double newPosition = position;
-
         // adjust the position using an iterative method; exit if very little 
         // change occurs.
         for (int y = 0; y < maxIterations; y++) {
             
+            final double paramPos = params[0];
+            final double paramPhoton = params[1];
+            final double paramBg = params[2];
+            
             final double[] firstDeriv = 
-                    findFirstDerivative(newPosition, data.length);
+                    findFirstDerivative(paramPos, data.length, length);
             
             final double[] secondDeriv = 
-                    findSecondDerivative(newPosition, data.length);
+                    findSecondDerivative(paramPos, data.length, length);
             
-            final double[] expectedCount = 
-                    findExpectedCount(newPosition, data.length);
+            final double[] incomplExpected = 
+                    findExpectedCount(paramPos, data.length, length);
             
-            double numer = 0;
-            double denom = 0;
+            double numerPos = 0;
+            double denomPos = 0;
+            double numerPhoton = 0;
+            double denomPhoton = 0;
+            double numerBg = 0;
+            double denomBg = 0;
             
             // sum the calculations for all data points
             for (int n = 0; n < data.length; n++) {
                 
-                final double delta1 = lambdaMLENumerator(
-                        data[n], 
-                        expectedCount[n] * photonCoefficient 
-                            + background * data.length, 
-                        firstDeriv[n] * photonCoefficient);
+                final double complExpected = 
+                        paramPhoton * incomplExpected[n] + length * paramBg;
                 
-                final double delta2 = lambdaMLEDenomenator(
-                        data[n], 
-                        expectedCount[n] * photonCoefficient 
-                            + background * data.length, 
-                        firstDeriv[n] * photonCoefficient, 
-                        secondDeriv[n] * photonCoefficient);
+                final double shared1 = data[n] / complExpected - 1.0;
+                final double shared2 = data[n] / (complExpected*complExpected);
                 
-                numer += delta1;
+                final double d1Pos = paramPhoton*firstDeriv[n];
+                final double d2Pos = paramPhoton*secondDeriv[n];
                 
-                denom += delta2;
+                numerPos += shared1 * d1Pos;
+                denomPos += shared1 * d2Pos - shared2 * (d1Pos*d1Pos);
+                
+                final double d1Photon = incomplExpected[n];
+                
+                numerPhoton += shared1 * d1Photon;
+                denomPhoton += -shared2 * (d1Photon*d1Photon);
+                
+                numerBg += shared1 * length;
+                denomBg += -shared2 * (length*length);
             }
+            
+            // adjust position
+            final double delta = numerPos / denomPos;
+            
+            // update parameters
+            params[0] -= delta;
+            params[1] -= numerPhoton / denomPhoton;
+            params[2] -= numerBg / denomBg;
             
             synchronized (this) {
                 iterations++;
             }
-            
-            final double delta = numer / denom;
-            
-            // adjust position
-            newPosition -= delta;    
             
             // end early if finished early
             if (Math.abs(delta) < epsilon) {
                 break;
             }
         }
-        
-        return newPosition;
-    }
-    
-    // the purpose of this method is to simplify
-    private static double lambdaMLENumerator(
-            final double data,
-            final double expectedCount, 
-            final double firstDeriv) {
-        
-        return firstDeriv * (data / expectedCount - 1);
-    }
-    
-    // the purpose of this method is to simplify 
-    private static double lambdaMLEDenomenator(
-            final double data, 
-            final double expectedCount, 
-            final double firstDeriv, 
-            final double secondDeriv) {
-        
-        return secondDeriv * (data / expectedCount - 1) 
-                - (firstDeriv * firstDeriv) * data 
-                / (expectedCount * expectedCount);
     }
     
     /**
@@ -331,21 +299,22 @@ implements ImageProcess, SettingsDialog, DebugStats {
      */
     private double[] findFirstDerivative(
             final double position,
-            final int pixelCount) {
+            final int pixelCount,
+            final double length) {
         
         final int numPixels = pixelCount;
         final double usablePixel = usablePixelCoeff * pixelSize;
-        final double sigma = ALPHA * pow((2 * PI) / wavelength, 2);
+        final double sigma = ALPHA * pow(2.0 * PI / wavelength, 2);
         final double[] firstDerivatives = new double[numPixels];
         
-        for (int i = 1; i <= numPixels; i++) {
-            final double p = (i - (numPixels + 1) / 2) * pixelSize - position;
+        for (int i = 0; i < numPixels; i++) {
+            final double p = (i + 0.5) * pixelSize - position;
             
-            final double firstTerm = -sigma * pow(p - usablePixel / 2, 2);
-            final double secondTerm = -sigma * pow(p + usablePixel / 2, 2);
+            final double firstTerm = -sigma * pow(p - usablePixel/2.0, 2);
+            final double secondTerm = -sigma * pow(p + usablePixel/2.0, 2);
             
-            firstDerivatives[i - 1] = 
-                    sqrt(PI / sigma) * (exp(firstTerm) - exp(secondTerm));
+            firstDerivatives[i] = length * sqrt(PI / sigma) 
+                                        * (exp(firstTerm) - exp(secondTerm));
         }
         
         return firstDerivatives;
@@ -358,28 +327,28 @@ implements ImageProcess, SettingsDialog, DebugStats {
      */
     private double[] findSecondDerivative(
             final double position,
-            final int pixelCount) {
+            final int pixelCount,
+            final double length) {
     
         final int numPixels = pixelCount;
         final double usablePixel = usablePixelCoeff * pixelSize;
-        final double sigma = ALPHA * pow((2 * PI) / wavelength, 2);
+        final double sigma = ALPHA * pow(2.0 * PI / wavelength, 2);
         final double[] secondDerivatives = new double[numPixels];
         
-        for (int i = 1; i <= numPixels; i++) {
-            final double p = (i - (numPixels + 1) / 2) * pixelSize - position;
+        for (int i = 0; i < numPixels; i++) {
+            final double p = (i + 0.5) * pixelSize - position;
             
-            final double firstTerm = -sigma * pow(p - usablePixel / 2, 2);
-            final double secondTerm = -sigma * pow(p + usablePixel / 2, 2);
+            final double firstTerm = -sigma * pow(p - usablePixel/2.0, 2);
+            final double secondTerm = -sigma * pow(p + usablePixel/2.0, 2);
             
-            final double firstConstant = 2 * sigma * (p - usablePixel / 2);
-            final double secondConstant = 2 * sigma * (p + usablePixel / 2);
+            final double firstConstant = 2.0 * sigma * (p - usablePixel/2.0);
+            final double secondConstant = 2.0 * sigma * (p + usablePixel/2.0);
             
-            secondDerivatives[i - 1] = sqrt(PI / sigma) 
-                    * (firstConstant * exp(firstTerm) 
-                            - secondConstant * exp(secondTerm));
+            secondDerivatives[i] = length * sqrt(PI / sigma) 
+                    * (firstConstant*exp(firstTerm) - secondConstant*exp(secondTerm));
         }
         
-        return secondDerivatives;
+        return  secondDerivatives;
     }
     
     /**
@@ -389,19 +358,20 @@ implements ImageProcess, SettingsDialog, DebugStats {
      */
     private double[] findExpectedCount(
             final double position,
-            final int pixelCount) {
+            final int pixelCount,
+            final double length) {
         
         final double usablePixel = usablePixelCoeff * pixelSize;
-        final double sigma = ALPHA * pow((2 * PI) / wavelength, 2);
+        final double sigma = ALPHA * pow(2.0 * PI / wavelength, 2);
         final double[] expectedCount = new double[pixelCount];
         
-        for (int i = 1; i <= pixelCount; i++) {
-            final double p = (i - (pixelCount + 1) / 2) * pixelSize - position;
-            final double firstTerm = sqrt(sigma) * (p - usablePixel / 2);
-            final double secondTerm = sqrt(sigma) * (p + usablePixel / 2);
+        for (int i = 0; i < pixelCount; i++) {
+            final double p = (i + 0.5) * pixelSize - position;
+            final double firstTerm = sqrt(sigma) * (p - usablePixel/2.0);
+            final double secondTerm = sqrt(sigma) * (p + usablePixel/2.0);
             
-            expectedCount[i - 1] = 
-                    PI / 2 / sigma * (erf(secondTerm) - erf(firstTerm));
+            expectedCount[i] = 
+                    length * PI / 2 / sigma * (erf(secondTerm) - erf(firstTerm));
         }
         
         return expectedCount;
