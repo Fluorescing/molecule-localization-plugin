@@ -92,7 +92,7 @@ implements ImageProcess, SettingsDialog, DebugStats {
                 context.getLocatorContext().getPhotonScale();
         
         // get estimated background photon count
-        final double bgNoise = context.getEstimatedNoise() / photonScale;
+        //final double bgNoise = context.getEstimatedNoise() / photonScale;
         
         // get a square chunk of the image
         final int size = 2 * initialRadius + 1;
@@ -115,7 +115,6 @@ implements ImageProcess, SettingsDialog, DebugStats {
             return false;
         }
         
-        //double sum = 0.0;
         double[] xData = zeros(width);
         double[] yData = zeros(height);
         
@@ -125,9 +124,11 @@ implements ImageProcess, SettingsDialog, DebugStats {
                 final double S = image.get(x + left, y + top) / photonScale;
                 xData[x] += S;
                 yData[y] += S;
-                //sum += S;
             }
         }
+        
+        // estimate the background noise window
+        final double bgNoise = Math.min(min(xData)/width, min(yData)/height);
         
         // estimate the initial center of mass
         pixelSize = context.getLocatorContext().getPixelSize();
