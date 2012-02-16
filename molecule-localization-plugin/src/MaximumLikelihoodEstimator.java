@@ -45,7 +45,8 @@ implements ImageProcess, SettingsDialog, DebugStats {
     private static final double WAVELENGTH_DEF = 550.0;
     private static final double USABLE_PIXEL_DEF = 0.9;
     private static final double ALPHA = 0.287;
-    private static final double EPSILON_DEF = 0.00001;
+    private static final double POS_EPSILON_DEF = 0.01;
+    private static final double INT_EPSILON_DEF = 0.1;
     private static final int DEFAULT_RADIUS = 3;
     
     // keys for storing ImageJ preferences
@@ -58,8 +59,11 @@ implements ImageProcess, SettingsDialog, DebugStats {
     private static final String USABLE_PIXEL = 
             "Localize_Particles.MaximumLikelyhoodEstimator.usable_pixel";
     
-    private static final String EPSILON = 
-            "Localize_Particles.MaximumLikelyhoodEstimator.epsilon";
+    private static final String POS_EPSILON = 
+            "Localize_Particles.MaximumLikelyhoodEstimator.pos_epsilon";
+    
+    private static final String INT_EPSILON = 
+            "Localize_Particles.MaximumLikelyhoodEstimator.int_epsilon";
     
     private static final String INIT_RADIUS = 
             "Localize_Particles.MaximumLikelyhoodEstimator.init_radius";
@@ -69,7 +73,8 @@ implements ImageProcess, SettingsDialog, DebugStats {
     private int maxIterations;
     private double wavelength;
     private double usablePixelCoeff;
-    private double epsilon;   
+    private double posEpsilon;
+    private double intEpsilon;
     private int initialRadius;
     
     // fields for logging purposes
@@ -110,7 +115,7 @@ implements ImageProcess, SettingsDialog, DebugStats {
             return false;
         }
         
-        double sum = 0.0;
+        //double sum = 0.0;
         double[] xData = zeros(width);
         double[] yData = zeros(height);
         
@@ -120,7 +125,7 @@ implements ImageProcess, SettingsDialog, DebugStats {
                 final double S = image.get(x + left, y + top) / photonScale;
                 xData[x] += S;
                 yData[y] += S;
-                sum += S;
+                //sum += S;
             }
         }
         
@@ -135,18 +140,26 @@ implements ImageProcess, SettingsDialog, DebugStats {
         final double photonCoeffX = (max(xData) - min(xData))
                 / max(findExpectedCount(cmX, width, height));
         
-        synchronized (this) {
-            intensityCoeff += photonCoeffX;
-        }
-        
         double[] params = {cmX, photonCoeffX, bgNoise};
         
         // get x estimates
         runMaximumLikelyhoodEstimator(params, xData, height);
         final double xResult = params[0];
         
+        if (Double.isNaN(params[0]) || Double.isNaN(params[1]) 
+                || Double.isNaN(params[2]) || params[1] < 0 || params[2] < 0) {
+            return false;
+        }
+
+        synchronized (this) {
+            intensityCoeff += params[1]/2.0;
+        }
+        
         final double photonCoeffY = (max(yData) - min(yData))
                 / max(findExpectedCount(cmY, height, width));
+        
+        // save the photon coefficient for later use (estimating photon count)
+        double photonCoeff = params[1];
         
         // update just the y-position
         params[0] = cmY;
@@ -157,9 +170,17 @@ implements ImageProcess, SettingsDialog, DebugStats {
         runMaximumLikelyhoodEstimator(params, yData, width); 
         final double yResult = params[0];
         
-        if (Double.isNaN(xResult) || Double.isNaN(yResult)) {
+        if (Double.isNaN(params[0]) || Double.isNaN(params[1]) 
+                || Double.isNaN(params[2]) || params[1] < 0 || params[2] < 0) {
             return false;
         }
+        
+        synchronized (this) {
+            intensityCoeff += params[1]/2.0;
+        }
+        
+        // take the average of the two photon coefficients
+        photonCoeff = (photonCoeff + params[1]) / 2.0;
         
         if (xResult < 0.0 || xResult > width * pixelSize
                 || yResult < 0.0 || yResult > height * pixelSize) {
@@ -180,8 +201,14 @@ implements ImageProcess, SettingsDialog, DebugStats {
                         xResult / pixelSize + left,
                         yResult / pixelSize + top));
         
-        context.setPhotonCount(sum 
-                - context.getEstimatedNoise() * width * height / photonScale);
+        // set a good estimate for the photon count
+        double expSum = 0;
+        final double[] expC = findExpectedCount(cmY, height, width);
+        for (int i = 0; i < height; i++) {
+            expSum += expC[i] * photonCoeff;
+        }
+        
+        context.setPhotonCount(expSum);
         
         return true;
     }
@@ -274,10 +301,10 @@ implements ImageProcess, SettingsDialog, DebugStats {
             }
             
             // adjust position
-            final double delta = numerPos / denomPos;
+            final double posDelta = numerPos / denomPos;
             
             // update parameters
-            params[0] -= delta;
+            params[0] -= posDelta;
             params[1] -= numerPhoton / denomPhoton;
             params[2] -= numerBg / denomBg;
             
@@ -285,8 +312,11 @@ implements ImageProcess, SettingsDialog, DebugStats {
                 iterations++;
             }
             
+            final double intPDiff = 2.0 * Math.abs(paramPhoton - params[1]) 
+                                                / (paramPhoton + params[1]);
+            
             // end early if finished early
-            if (Math.abs(delta) < epsilon) {
+            if (Math.abs(posDelta) < posEpsilon && intPDiff < intEpsilon) {
                 break;
             }
         }
@@ -452,8 +482,10 @@ implements ImageProcess, SettingsDialog, DebugStats {
                 Prefs.get(WAVELENGTH, WAVELENGTH_DEF), 1, 6, "nm");
         dialog.addNumericField("Usable Pixel", 
                 Prefs.get(USABLE_PIXEL, USABLE_PIXEL_DEF), 1, 6, "coefficient");
-        dialog.addNumericField("Minimum Change", 
-                Prefs.get(EPSILON, EPSILON_DEF), 5, 6, "");
+        dialog.addNumericField("Position Threshold", 
+                Prefs.get(POS_EPSILON, POS_EPSILON_DEF), 2, 6, "nm");
+        dialog.addNumericField("Intensity Threshold", 
+                Prefs.get(INT_EPSILON, INT_EPSILON_DEF), 1, 6, "%");
         dialog.addNumericField("Maximum Iterations", 
                 Prefs.get(INT_MAX_ITER, MAX_ITER_DEF), 0);
         dialog.addNumericField("Initial Radius", 
@@ -465,20 +497,23 @@ implements ImageProcess, SettingsDialog, DebugStats {
         
         wavelength = dialog.getNextNumber();
         usablePixelCoeff = dialog.getNextNumber();
-        epsilon = dialog.getNextNumber();
+        posEpsilon = dialog.getNextNumber();
+        intEpsilon = dialog.getNextNumber();
         maxIterations = (int) dialog.getNextNumber();
         initialRadius = (int) dialog.getNextNumber();
         
         IJ.log("MaximumLikelyhoodEstimator Settings: ");
         IJ.log("  Wavelength: " + wavelength);
         IJ.log("  Usable Pixel: " + usablePixelCoeff);
-        IJ.log("  Minimum Change: " + epsilon);
+        IJ.log("  Position Threshold: " + posEpsilon);
+        IJ.log("  Intensity Threshold: " + posEpsilon);
         IJ.log("  Maximum Iterations: " + maxIterations);
         IJ.log("  Initial Radius: " + initialRadius);
         
         Prefs.set(WAVELENGTH, wavelength);
         Prefs.set(USABLE_PIXEL, usablePixelCoeff);
-        Prefs.set(EPSILON, epsilon);
+        Prefs.set(POS_EPSILON, posEpsilon);
+        Prefs.set(INT_EPSILON, intEpsilon);
         Prefs.set(INT_MAX_ITER, maxIterations);
         Prefs.set(INIT_RADIUS, initialRadius);
     }
