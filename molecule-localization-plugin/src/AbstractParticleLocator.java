@@ -67,7 +67,8 @@ public abstract class AbstractParticleLocator implements SettingsDialog {
     private double signalNoiseRatio;
     private double photonScale;                     // photons per max. value
     private double pixelSize;
-    private boolean debugImages = false;
+    private boolean debugMode = false;
+    private boolean foundSomething;
     
     /** 
      * An array of instances of process objects.  This array holds the 
@@ -154,7 +155,7 @@ public abstract class AbstractParticleLocator implements SettingsDialog {
                 Prefs.get(PIXEL_SIZE, DEFAULT_SIZE), 2, 6, "nm");
         dialog.addNumericField("Full Photon Scale", 
                 Prefs.get(PHOTON_SCALE, DEFAULT_SCALE), 2, 6, "photons");
-        dialog.addCheckbox("Generate Debugging Images", false);
+        dialog.addCheckbox("Debug Mode", false);
     }
 
     @Override
@@ -164,13 +165,13 @@ public abstract class AbstractParticleLocator implements SettingsDialog {
         signalNoiseRatio = dialog.getNextNumber();
         pixelSize = dialog.getNextNumber();
         photonScale = dialog.getNextNumber();
-        debugImages = dialog.getNextBoolean();
+        debugMode = dialog.getNextBoolean();
         
         // log the values retrieved values
         IJ.log("Signal-to-Noise Ratio: " + signalNoiseRatio);
         IJ.log("Pixel Size: " + getPixelSize());
         IJ.log("Photons per Full Intensity Scale: " + photonScale);
-        IJ.log("Debug Images: " + (debugImages ? "Enabled" : "Disabled"));
+        IJ.log("Debug Mode: " + (debugMode ? "Enabled" : "Disabled"));
         
         // save to ImageJ for use during the next use of the plug-in
         Prefs.set(SNR, signalNoiseRatio);
@@ -197,9 +198,11 @@ public abstract class AbstractParticleLocator implements SettingsDialog {
         // start search
         searchStack();
         
-        // display all debug counters
-        for (DebugStats tracker : debugging) {
-            tracker.logCounters();
+        if (debugMode) {
+            // display all debug counters
+            for (DebugStats tracker : debugging) {
+                tracker.logCounters();
+            }
         }
         
         synchronized (this) {
@@ -227,6 +230,9 @@ public abstract class AbstractParticleLocator implements SettingsDialog {
             };
         }
         
+        // assume nothing will be found
+        foundSomething = false;
+        
         for (int i = 0; i < thread.length; i++) {
             thread[i].start();
         }
@@ -240,35 +246,38 @@ public abstract class AbstractParticleLocator implements SettingsDialog {
             IJ.handleException(e);
         }
         
-        // display reconstruction
-        final int[][] image =
-                reconstruct.reconstruct(0, 0, 
-                        stack.getWidth(), 
-                        stack.getHeight(), 
-                        stack.getWidth() * 32, 
-                        stack.getHeight() * 32, 
-                        65535,
-                        1000.0 / pixelSize
-                        );
-        
-        final ImagePlus impRecon = 
-                IJ.createImage("Reconstruction", "16-bit black", 
-                        stack.getWidth() * 32, 
-                        stack.getHeight() * 32, 1);
-        
-        impRecon.getProcessor().setIntArray(image);
-        impRecon.show();
-        
-        // display debug stack
-        if (debugImages) {
-            new ImagePlus("Debugging Stack", debugStack).show();
+        if (foundSomething) {
+            
+            // display reconstruction
+            final int[][] image =
+                    reconstruct.reconstruct(0, 0, 
+                            stack.getWidth(), 
+                            stack.getHeight(), 
+                            stack.getWidth() * 32, 
+                            stack.getHeight() * 32, 
+                            65535,
+                            1000.0 / pixelSize
+                            );
+            
+            final ImagePlus impRecon = 
+                    IJ.createImage("Reconstruction", "16-bit black", 
+                            stack.getWidth() * 32, 
+                            stack.getHeight() * 32, 1);
+            
+            impRecon.getProcessor().setIntArray(image);
+            impRecon.show();
+            
+            // display debug stack
+            if (debugMode) {
+                new ImagePlus("Debugging Stack", debugStack).show();
+            }
+            
+            // reset progress bar
+            IJ.showProgress(2);
+            
+            // display results
+            results.show("Localization Results");
         }
-        
-        // reset progress bar
-        IJ.showProgress(2);
-        
-        // display results
-        results.show("Localization Results");
     }
     
     // search stack worker (per thread)
@@ -307,7 +316,7 @@ public abstract class AbstractParticleLocator implements SettingsDialog {
         
         // setup debug highlighter
         DebugImage debugImage = new DebugImage(null);
-        if (debugImages) {
+        if (debugMode) {
             debugImage = new DebugImage(image);
         }
         
@@ -344,6 +353,9 @@ public abstract class AbstractParticleLocator implements SettingsDialog {
             // check if passed
             if (passed) {
                 
+                // We found something!
+                foundSomething = true;
+                
                 // set the processed region as processed
                 final Window window = context.getWindow();
                 
@@ -365,23 +377,25 @@ public abstract class AbstractParticleLocator implements SettingsDialog {
                 synchronized (results) {
                     results.incrementCounter();
                     results.addValue("Frame Number", slice);
-                    results.addValue("X (px)", centroid.getX());
-                    results.addValue("Y (px)", centroid.getY());
+                    results.addValue("X (px)", centroid.getLastX());
+                    results.addValue("Y (px)", centroid.getLastY());
                     results.addValue("X (nm)", 
-                            centroid.getX() * getPixelSize());
+                            centroid.getLastX() * getPixelSize());
                     results.addValue("Y (nm)", 
-                            centroid.getY() * getPixelSize());
+                            centroid.getLastY() * getPixelSize());
                     results.addValue("Intensity",
-                            context.getPhotonCount());
+                            context.getLastPhotonCount());
+                    results.addValue("Background (per pixel)", 
+                            context.getLastBackgroundLevel());
                 }
                 
                 // add to reconstructed image
-                reconstruct.add(centroid.getX(), centroid.getY());
+                reconstruct.add(centroid.getLastX(), centroid.getLastY());
             }
         }
         
         // add debug image to stack
-        if (debugImages) {
+        if (debugMode) {
             synchronized (debugStack) {
                 debugStack.addSlice("Slice", debugImage.getImage());
             }

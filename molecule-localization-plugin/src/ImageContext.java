@@ -34,6 +34,7 @@ public class ImageContext {
     private final double noise;        // estimated background noise
     private Coordinates centroid;
     private double photoncount;
+    private double background;
     private Window window;
     
     private final AbstractParticleLocator mLocator;
@@ -185,6 +186,15 @@ public class ImageContext {
     }
     
     /**
+     * Sets the current background level (per pixel) estimate to the specified 
+     * value.
+     * @param estimate the estimated  background level per pixel
+     */
+    public void setBackgroundLevel(final double estimate) {
+        background = estimate;
+    }
+    
+    /**
      * Sets the current window to the specified window.  Set to null to clear.
      * @param window the specified window
      */
@@ -204,8 +214,16 @@ public class ImageContext {
      * Get the current photon count estimate to the specified value.
      * @return the estimated photon count
      */
-    public double getPhotonCount() {
+    public double getLastPhotonCount() {
         return photoncount;
+    }
+    
+    /**
+     * Get the current background level estimate to the specified value.
+     * @return the estimated background level per pixel
+     */
+    public double getLastBackgroundLevel() {
+        return background;
     }
     
     /**

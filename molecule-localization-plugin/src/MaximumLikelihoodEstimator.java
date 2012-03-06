@@ -180,8 +180,7 @@ implements ImageProcess, SettingsDialog, DebugStats {
             intensityCoeff += params[1]/2.0;
         }
         
-        // take the average of the two photon coefficients
-        photonCoeff = (photonCoeff + params[1]) / 2.0;
+        
         
         if (xResult < 0.0 || xResult > width * pixelSize
                 || yResult < 0.0 || yResult > height * pixelSize) {
@@ -202,6 +201,9 @@ implements ImageProcess, SettingsDialog, DebugStats {
                         xResult / pixelSize + left,
                         yResult / pixelSize + top));
         
+        // take the average of the two photon coefficients
+        photonCoeff = (photonCoeff + params[1]) / 2.0;
+        
         // set a good estimate for the photon count
         double expSum = 0;
         final double[] expC = findExpectedCount(cmY, height, width);
@@ -210,6 +212,8 @@ implements ImageProcess, SettingsDialog, DebugStats {
         }
         
         context.setPhotonCount(expSum);
+        context.setBackgroundLevel(params[2]);
+        
         
         return true;
     }

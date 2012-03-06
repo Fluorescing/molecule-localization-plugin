@@ -41,14 +41,14 @@ public class Coordinates {
     /**
      * @return the x-coordinate
      */
-    public double getX() {
+    public double getLastX() {
         return x;
     }
     
     /**
      * @return the y-coordinate
      */
-    public double getY() {
+    public double getLastY() {
         return y;
     }
     
