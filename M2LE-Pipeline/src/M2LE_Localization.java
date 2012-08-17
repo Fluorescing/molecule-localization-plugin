@@ -72,11 +72,15 @@ public class M2LE_Localization implements PlugIn {
         
         // add to results table
         int SIZE = estimates.size();
-        while (!estimates.isEmpty()) {
+        while (true) {
             try {
                 // get pixel
                 final Estimate estimate = estimates.take();
                 
+                // check for the end of the queue
+                if (estimate.isEndOfQueue())
+                    break;
+
                 results.incrementCounter();
                 results.addValue("Frame", estimate.getSlice());
                 results.addValue("x (px)", estimate.getXEstimate());

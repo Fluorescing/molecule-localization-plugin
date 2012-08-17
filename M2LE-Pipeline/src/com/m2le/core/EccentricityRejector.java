@@ -30,11 +30,15 @@ public final class EccentricityRejector {
         final LinkedBlockingQueue<Estimate> eccpixels = new LinkedBlockingQueue<Estimate>();
         
         // check all potential pixels
-        while (!pixels.isEmpty()) {
+        while (true) {
             try {
                 
                 // get pixel
                 final Estimate pixel = pixels.take();
+                
+                // check for the end of the queue
+                if (pixel.isEndOfQueue())
+                    break;
                 
                 // process the pixel
                 updatePixel(stack, pixel);
@@ -47,6 +51,9 @@ public final class EccentricityRejector {
                 IJ.handleException(e);
             }
         }
+        
+        // mark the end of the queue
+        ThreadHelper.markEndOfQueue(eccpixels);
         
         return eccpixels;
     }

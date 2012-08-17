@@ -35,11 +35,15 @@ public final class MoleculeLocator {
                 new PriorityBlockingQueue<Estimate>(pixels.size());
         
         // check all potential pixels
-        while (!pixels.isEmpty()) {
+        while (true) {
             try {
                 
                 // get pixel
                 final Estimate estimate = pixels.take();
+                
+                // check for the end of the queue
+                if (estimate.isEndOfQueue())
+                    break;
                 
                 // process the pixel
                 findMaxLikelihood(stack, estimate);
@@ -52,6 +56,9 @@ public final class MoleculeLocator {
                 IJ.handleException(e);
             }
         }
+        
+        // mark the end of the queue
+        ThreadHelper.markEndOfQueue(estimates);
         
         return estimates;
     }

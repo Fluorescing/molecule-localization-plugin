@@ -58,7 +58,7 @@ public final class LocatePotentialPixels {
         }
         
         // mark the end of the queue
-        pixels.add(new Estimate());
+        ThreadHelper.markEndOfQueue(pixels);
         
         return pixels;
     }

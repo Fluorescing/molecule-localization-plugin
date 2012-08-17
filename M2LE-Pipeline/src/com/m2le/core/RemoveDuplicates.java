@@ -20,13 +20,15 @@ public final class RemoveDuplicates {
         Estimate[][] grid = new Estimate[W][H];
         
         // check all potential pixels
-        while (!estimates.isEmpty()) {
+        while (true) {
             try {
                 
                 // get pixel
                 final Estimate estimate = estimates.take();
                 
-                IJ.log(String.format("%d", estimate.getSlice()));
+                // check for the end of the queue
+                if (estimate.isEndOfQueue())
+                    break;
                 
                 // check the current slice (reset grid if new slice)
                 if (estimate.getSlice() != slice) {
@@ -82,12 +84,19 @@ public final class RemoveDuplicates {
             }
         }
         
+        // mark the end of the queue
+        ThreadHelper.markEndOfQueue(reduced);
+        
         // further reduce the estimates
-        while (!reduced.isEmpty()) {
+        while (true) {
             try {
                 
                 // get pixel
                 final Estimate estimate = reduced.take();
+                
+                // check for the end of the queue
+                if (estimate.isEndOfQueue())
+                    break;
                 
                 // put it back if it survived
                 if (estimate.passed())
@@ -97,6 +106,9 @@ public final class RemoveDuplicates {
                 IJ.handleException(e);
             }
         }
+        
+        // mark the end of the queue
+        ThreadHelper.markEndOfQueue(finalreduced);
         
         return finalreduced;
     }
