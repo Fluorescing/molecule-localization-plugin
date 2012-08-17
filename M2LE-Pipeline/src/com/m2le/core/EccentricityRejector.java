@@ -16,6 +16,7 @@
 
 package com.m2le.core;
 
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import ij.IJ;
@@ -25,15 +26,15 @@ public final class EccentricityRejector {
     
     private EccentricityRejector() { };
     
-    public static LinkedBlockingQueue<Pixel> findSubset(final StackContext stack, final LinkedBlockingQueue<Pixel> pixels) {
-        final LinkedBlockingQueue<Pixel> eccpixels = new LinkedBlockingQueue<Pixel>();
+    public static BlockingQueue<Estimate> findSubset(final StackContext stack, final BlockingQueue<Estimate> pixels) {
+        final LinkedBlockingQueue<Estimate> eccpixels = new LinkedBlockingQueue<Estimate>();
         
         // check all potential pixels
         while (!pixels.isEmpty()) {
             try {
                 
                 // get pixel
-                final Pixel pixel = pixels.take();
+                final Estimate pixel = pixels.take();
                 
                 // process the pixel
                 updatePixel(stack, pixel);
@@ -50,7 +51,7 @@ public final class EccentricityRejector {
         return eccpixels;
     }
     
-    private static void updatePixel(final StackContext stack, final Pixel pixel) {
+    private static void updatePixel(final StackContext stack, final Estimate pixel) {
     
         final ImageProcessor ip = stack.getImageProcessor(pixel.getSlice());
         final JobContext job = stack.getJobContext();

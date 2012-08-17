@@ -1,12 +1,11 @@
 
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
 import com.m2le.core.EccentricityRejector;
 import com.m2le.core.Estimate;
 import com.m2le.core.JobContext;
 import com.m2le.core.LocatePotentialPixels;
 import com.m2le.core.MoleculeLocator;
-import com.m2le.core.Pixel;
 import com.m2le.core.RemoveDuplicates;
 import com.m2le.core.StackContext;
 import com.m2le.core.UserParams;
@@ -56,7 +55,7 @@ public class M2LE_Localization implements PlugIn {
         results.setPrecision(10);
         
         // find all potential pixels
-        LinkedBlockingQueue<Pixel> potential = LocatePotentialPixels.findPotentialPixels(stack);
+        BlockingQueue<Estimate> potential = LocatePotentialPixels.findPotentialPixels(stack);
         
         // find subset of potential pixels that pass an eccentricity test
         if (!job.getCheckboxValue(UserParams.ECC_DISABLED)) {
@@ -64,7 +63,7 @@ public class M2LE_Localization implements PlugIn {
         }
         
         // transform the PE pixels into localization estimates
-        LinkedBlockingQueue<Estimate> estimates = MoleculeLocator.findSubset(stack, potential);
+        BlockingQueue<Estimate> estimates = MoleculeLocator.findSubset(stack, potential);
         
         // weed out duplicates (choose the estimate carefully)
         estimates = RemoveDuplicates.findSubset(stack, estimates);

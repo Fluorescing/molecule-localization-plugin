@@ -221,7 +221,7 @@ public final class StaticMath {
         return eigenValues;
     } 
     
-    public static double estimateNoise(final StackContext stack, final Pixel pixel) {
+    public static double estimateNoise(final StackContext stack, final Estimate pixel) {
         
         final JobContext job = stack.getJobContext();
         final ImageProcessor ip = stack.getImageProcessor(pixel.getSlice());

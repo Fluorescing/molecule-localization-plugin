@@ -2,13 +2,14 @@ package com.m2le.core;
 
 import ij.IJ;
 
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public final class RemoveDuplicates {
     
     private RemoveDuplicates() { };
     
-    public static LinkedBlockingQueue<Estimate> findSubset(final StackContext stack, final LinkedBlockingQueue<Estimate> estimates) {
+    public static BlockingQueue<Estimate> findSubset(final StackContext stack, final BlockingQueue<Estimate> estimates) {
         final LinkedBlockingQueue<Estimate> reduced = new LinkedBlockingQueue<Estimate>();
         final LinkedBlockingQueue<Estimate> finalreduced = new LinkedBlockingQueue<Estimate>();
         
@@ -24,6 +25,8 @@ public final class RemoveDuplicates {
                 
                 // get pixel
                 final Estimate estimate = estimates.take();
+                
+                IJ.log(String.format("%d", estimate.getSlice()));
                 
                 // check the current slice (reset grid if new slice)
                 if (estimate.getSlice() != slice) {

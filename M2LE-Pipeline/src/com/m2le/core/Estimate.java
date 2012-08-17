@@ -1,6 +1,6 @@
 package com.m2le.core;
 
-public class Estimate {
+public class Estimate implements Comparable<Estimate> {
     private int x;
     private int y;
     private int slice;
@@ -21,15 +21,25 @@ public class Estimate {
 
     private boolean rejected;
     
-    public Estimate(Pixel pixel) {
-        this.x = pixel.getX();
-        this.y = pixel.getY(); 
-        this.slice = pixel.getSlice();
-        this.signal = pixel.getSignal();
-        this.eccentricity = pixel.getEccentricity();
-        this.major = pixel.getMajorAxis();
-        this.minor = pixel.getMinorAxis();
+    private boolean eos;
+    
+    // end of stream
+    public Estimate() {
+        this.eos = true;
+        this.slice = Integer.MAX_VALUE;
+    }
+    
+    public Estimate(int x, int y, int slice, double signal) {
+        this.eos = false;
+        this.x = x;
+        this.y = y; 
+        this.slice = slice;
+        this.signal = signal;
         this.rejected = false;
+    }
+    
+    public boolean isEndOfQueue() {
+        return eos;
     }
     
     public int getX() {
@@ -139,5 +149,15 @@ public class Estimate {
 
     public void setWidthEstimateY(double estwy) {
         this.estwy = estwy;
+    }
+
+    @Override
+    public int compareTo(Estimate o) {
+        if (this.getSlice() == o.getSlice())
+            return 0;
+        else if (this.getSlice() > o.getSlice())
+            return 1;
+        else
+            return -1;
     }
 }

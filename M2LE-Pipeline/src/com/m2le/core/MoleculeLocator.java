@@ -16,7 +16,8 @@
 
 package com.m2le.core;
 
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.PriorityBlockingQueue;
 
 import ij.IJ;
 import ij.process.ByteProcessor;
@@ -26,18 +27,22 @@ public final class MoleculeLocator {
     
     private MoleculeLocator() { }
     
-    public static LinkedBlockingQueue<Estimate> findSubset(final StackContext stack, final LinkedBlockingQueue<Pixel> pixels) {
-        final LinkedBlockingQueue<Estimate> estimates = new LinkedBlockingQueue<Estimate>();
+    public static BlockingQueue<Estimate> findSubset(
+            final StackContext stack, 
+            final BlockingQueue<Estimate> pixels) {
+        
+        final PriorityBlockingQueue<Estimate> estimates = 
+                new PriorityBlockingQueue<Estimate>(pixels.size());
         
         // check all potential pixels
         while (!pixels.isEmpty()) {
             try {
                 
                 // get pixel
-                final Pixel pixel = pixels.take();
+                final Estimate estimate = pixels.take();
                 
                 // process the pixel
-                final Estimate estimate = findMaxLikelihood(stack, new Estimate(pixel));
+                findMaxLikelihood(stack, estimate);
                 
                 // put it back if it survived
                 if (estimate.passed())
@@ -127,7 +132,9 @@ public final class MoleculeLocator {
         return false;
     }
     
-    public static Estimate findMaxLikelihood(final StackContext stack, final Estimate estimate) {
+    public static Estimate findMaxLikelihood(
+            final StackContext stack, 
+            final Estimate estimate) {
         
         final JobContext job     = stack.getJobContext();
         final ImageProcessor ip  = stack.getImageProcessor(estimate.getSlice());
