@@ -34,28 +34,41 @@ public final class MoleculeLocator {
         final PriorityBlockingQueue<Estimate> estimates = 
                 new PriorityBlockingQueue<Estimate>(pixels.size());
         
-        // check all potential pixels
-        while (true) {
-            try {
-                
-                // get pixel
-                final Estimate estimate = pixels.take();
-                
-                // check for the end of the queue
-                if (estimate.isEndOfQueue())
-                    break;
-                
-                // process the pixel
-                findMaxLikelihood(stack, estimate);
-                
-                // put it back if it survived
-                if (estimate.passed())
-                    estimates.put(estimate);
-                
-            } catch (InterruptedException e) {
-                IJ.handleException(e);
-            }
+        final int numCPU = ThreadHelper.getProcessorCount();
+        final Thread[] threads = new Thread[numCPU];
+        
+        for (int n = 0; n < numCPU; n++) {
+            threads[n] = new Thread(String.format("MoleculeLocatorThread%d", n)) {
+                @Override
+                public void run() {
+                    // check all potential pixels
+                    while (true) {
+                        try {
+                            
+                            // get pixel
+                            final Estimate estimate = pixels.take();
+                            
+                            // check for the end of the queue
+                            if (estimate.isEndOfQueue())
+                                break;
+                            
+                            // process the pixel
+                            findMaxLikelihood(stack, estimate);
+                            
+                            // put it back if it survived
+                            if (estimate.passed())
+                                estimates.put(estimate);
+                            
+                        } catch (InterruptedException e) {
+                            IJ.handleException(e);
+                        }
+                    }
+                }
+            };
         }
+        
+        // start the threads
+        ThreadHelper.startThreads(threads);
         
         // mark the end of the queue
         ThreadHelper.markEndOfQueue(estimates);

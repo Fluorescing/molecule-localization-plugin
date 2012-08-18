@@ -29,28 +29,41 @@ public final class EccentricityRejector {
     public static BlockingQueue<Estimate> findSubset(final StackContext stack, final BlockingQueue<Estimate> pixels) {
         final LinkedBlockingQueue<Estimate> eccpixels = new LinkedBlockingQueue<Estimate>();
         
-        // check all potential pixels
-        while (true) {
-            try {
-                
-                // get pixel
-                final Estimate pixel = pixels.take();
-                
-                // check for the end of the queue
-                if (pixel.isEndOfQueue())
-                    break;
-                
-                // process the pixel
-                updatePixel(stack, pixel);
-                
-                // put it back if it survived
-                if (pixel.passed())
-                    eccpixels.put(pixel);
-                
-            } catch (InterruptedException e) {
-                IJ.handleException(e);
-            }
+        final int numCPU = ThreadHelper.getProcessorCount();
+        final Thread[] threads = new Thread[numCPU];
+        
+        for (int n = 0; n < numCPU; n++) {
+            threads[n] = new Thread(String.format("EccentricityThread%d", n)) {
+                @Override
+                public void run() {
+                    // check all potential pixels
+                    while (true) {
+                        try {
+                            
+                            // get pixel
+                            final Estimate pixel = pixels.take();
+                            
+                            // check for the end of the queue
+                            if (pixel.isEndOfQueue())
+                                break;
+                            
+                            // process the pixel
+                            updatePixel(stack, pixel);
+                            
+                            // put it back if it survived
+                            if (pixel.passed())
+                                eccpixels.put(pixel);
+                            
+                        } catch (InterruptedException e) {
+                            IJ.handleException(e);
+                        }
+                    }
+                }         
+            };
         }
+        
+        // start the threads
+        ThreadHelper.startThreads(threads);
         
         // mark the end of the queue
         ThreadHelper.markEndOfQueue(eccpixels);
