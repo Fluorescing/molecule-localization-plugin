@@ -11,13 +11,12 @@ public final class UserParams {
     
     private UserParams() { }
     
-    public static final String VERSION = "1.1.4";
+    public static final String VERSION = "1.1.5";
     
     public static final String SN_RATIO = "M2LEPL.IA.SNC";
     public static final String LOWEST_NOISE_EST = "M2LEPL.IA.LNE";
     public static final String PIXEL_SIZE = "M2LEPL.IA.PS";
     public static final String SATURATION = "M2LEPL.IA.SP";
-    public static final String NOISE_SIZE = "M2LEPL.IA.NSS";
     public static final String DEBUG_MODE = "M2LEPL.IA.DM";
     public static final String ECC_THRESHOLD = "M2LEPL.MR.ET";
     public static final String ECC_RADIUS = "M2LEPL.MR.TR";
@@ -37,8 +36,7 @@ public final class UserParams {
     public static final String DB_ROI = "M2LEPL.DB.ROI";
     
     /**
-     * Returns a version string containing the major, minor, and build version,
-     * as well as the first 7 git hash.
+     * Returns a version string containing the major, minor, and build version.
      * @return The version string.
      */
     public static String getVersionString() {
@@ -67,7 +65,6 @@ public final class UserParams {
         job.addNumericParam(LOWEST_NOISE_EST,   "Lowest Noise Estimate",    2.0,  0, "photons");
         job.addNumericParam(PIXEL_SIZE,         "Pixel Size",             110.0,  2, "nanometers");
         job.addNumericParam(SATURATION,         "Saturation Point",     65535.0,  2, "photons");
-        job.addNumericParam(NOISE_SIZE,         "Noise Sample Radius",      3.0,  0, "pixels");
         
         job.addMessage("Debug Options");
         job.addCheckboxParam(DEBUG_MODE,        "Debug Mode",   false);
