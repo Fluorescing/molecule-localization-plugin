@@ -54,19 +54,34 @@ public class M2LE_Localization implements PlugIn {
         final ResultsTable results = new ResultsTable();
         results.setPrecision(10);
         
+        IJ.showProgress(0, 100);
+        IJ.showStatus("Locating Potential Molecules...");
+        
         // find all potential pixels
         BlockingQueue<Estimate> potential = LocatePotentialPixels.findPotentialPixels(stack);
+        
+        IJ.showProgress(25, 100);
+        IJ.showStatus("Testing Eccentricity...");
         
         // find subset of potential pixels that pass an eccentricity test
         if (!job.getCheckboxValue(UserParams.ECC_DISABLED)) {
             potential = EccentricityRejector.findSubset(stack, potential);
         }
         
+        IJ.showProgress(50, 100);
+        IJ.showStatus("Localizing Molecules...");
+        
         // transform the PE pixels into localization estimates
         BlockingQueue<Estimate> estimates = MoleculeLocator.findSubset(stack, potential);
         
+        IJ.showProgress(75, 100);
+        IJ.showStatus("Removing Duplicates...");
+        
         // weed out duplicates (choose the estimate carefully)
         estimates = RemoveDuplicates.findSubset(stack, estimates);
+        
+        IJ.showProgress(100, 100);
+        IJ.showStatus("Printing Results...");
         
         final int pixelSize = (int) job.getNumericValue(UserParams.PIXEL_SIZE);
         
@@ -115,6 +130,7 @@ public class M2LE_Localization implements PlugIn {
         // show the results
         results.show("Localization Results");
         
+        IJ.showStatus(String.format("%d Localizations.", SIZE));
         IJ.log(String.format("[%d localizations]", SIZE));
     }
 
