@@ -25,6 +25,17 @@ public final class StaticMath {
     private StaticMath() { }
     
     public static double calculateThreshold(double photons, double acc) {
+        
+        final double x0h = acc - 89.952;
+        final double x0 = 61172.0/(x0h*x0h + 1307.9) - 97.515;
+        final double y0 = 2.1759e-6*Math.pow(acc, 2.2837) + 0.082876;
+        final double Ah = acc - 120.7;
+        final double A = 992.92/(Ah*Ah - 35.069) + 2.9048;
+
+        return A/Math.sqrt(photons - x0) + y0;
+    }
+    
+    /*public static double calculateThreshold(double photons, double acc) {
         final double acc2 = acc*acc;
         final double acc3 = acc2*acc;
         final double acc4 = acc3*acc;
@@ -36,7 +47,7 @@ public final class StaticMath {
         final double xhalf = -4190.8 + 427.36*acc - 13.766*acc2 + 0.21598*acc3 - 0.0016615*acc4 + 5.0288e-6*acc5; 
         
         return base + (max - base)/(1+Math.pow(xhalf/photons, rate));
-    }
+    }*/
 
     public static double estimatePhotonCount(
             final ImageProcessor ip,
