@@ -43,8 +43,8 @@ public final class RemoveDuplicates {
                 // check for a conflict
                 Estimate compare = grid[estimate.getX()][estimate.getY()];
                 if (compare != null) {
-                    // choose the lesser of the two eccentricities (could use another decider)
-                    if (compare.getEccentricity() < estimate.getEccentricity()) {
+                    // choose the lesser of the two center displacements
+                    if (compare.getDistanceFromCenter() < estimate.getDistanceFromCenter()) {
                         
                         // replace estimate
                         estimate.reject();
@@ -70,7 +70,7 @@ public final class RemoveDuplicates {
                 final int EH = Math.min(H, estimate.getY() + 4);
                 for (int x = Math.max(0, estimate.getX()-3); x < EW; x++) {
                     for (int y = Math.max(0, estimate.getY()-3); y < EH; y++) {
-                        if (grid[x][y] == null || (grid[x][y] != null && estimate.getEccentricity() < grid[x][y].getEccentricity()))
+                        if (grid[x][y] == null || (grid[x][y] != null && estimate.getDistanceFromCenter() < grid[x][y].getDistanceFromCenter()))
                             grid[x][y] = estimate;
                     }
                 }

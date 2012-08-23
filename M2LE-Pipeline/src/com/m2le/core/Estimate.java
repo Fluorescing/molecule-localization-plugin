@@ -23,13 +23,18 @@ public class Estimate implements Comparable<Estimate> {
     
     private boolean eos;
     
+    private boolean hasDistance;
+    private double centerDistance;
+    
     // end of stream
     public Estimate() {
+        this.hasDistance = false;
         this.eos = true;
         this.slice = Integer.MAX_VALUE;
     }
     
     public Estimate(int x, int y, int slice, double signal) {
+        this.hasDistance = false;
         this.eos = false;
         this.x = x;
         this.y = y; 
@@ -40,6 +45,18 @@ public class Estimate implements Comparable<Estimate> {
     
     public boolean isEndOfQueue() {
         return eos;
+    }
+    
+    public double getDistanceFromCenter() {
+        // calculate the distance to center if not already done
+        if (!hasDistance) {
+            final double dx = estrx - x;
+            final double dy = estry - y;
+            centerDistance = Math.sqrt(dx*dx + dy*dy);
+            hasDistance = true;
+        }
+        
+        return centerDistance;
     }
     
     public int getX() {
