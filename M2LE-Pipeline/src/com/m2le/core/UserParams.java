@@ -11,7 +11,7 @@ public final class UserParams {
     
     private UserParams() { }
     
-    public static final String VERSION = "1.1.7";
+    public static final String VERSION = "1.1.8";
     
     public static final String SN_RATIO = "M2LEPL.IA.SNC";
     public static final String LOWEST_NOISE_EST = "M2LEPL.IA.LNE";
@@ -77,9 +77,9 @@ public final class UserParams {
         job.addMessage("Maximum Likelihood Estimator");
         job.addNumericParam(WAVELENGTH,         "Light Wavelength",       550.0,  1, "nanometers");
         job.addNumericParam(USABLE_PIXEL,       "Usable Pixel",            90.0,  1, "%");
-        job.addNumericParam(ML_POS_EPSILON,     "Position Threshold",       0.01, 4, "nanometers");
-        job.addNumericParam(ML_INT_EPSILON,     "Intensity Threshold",      1.0,  4, "%");
-        job.addNumericParam(ML_WID_EPSILON,     "Width Threshold",          0.01, 4, "???");
+        job.addNumericParam(ML_POS_EPSILON,     "Position Threshold",       0.0001, 4, "nanometers");
+        job.addNumericParam(ML_INT_EPSILON,     "Intensity Threshold",      0.01,  4, "%");
+        job.addNumericParam(ML_WID_EPSILON,     "Width Threshold",          0.0001, 4, "???");
         job.addNumericParam(ML_MAX_ITERATIONS,  "Maximum Iterations",      50.0,  0, "");
         
         job.addMessage("Parameter Bounds");
