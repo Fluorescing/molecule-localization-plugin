@@ -40,8 +40,8 @@ public final class LocatePotentialPixels {
             final int W = ip.getWidth();
             final int H = ip.getHeight();
             
-            for (int x = 0; x < W; x++) {
-                for (int y = 0; y < H; y++) {
+            for (int x = 3; x < W-3; x++) {
+                for (int y = 3; y < H-3; y++) {
                     
                     // store potential pixels in the queue
                     final double S = ip.get(x, y) / scale;
