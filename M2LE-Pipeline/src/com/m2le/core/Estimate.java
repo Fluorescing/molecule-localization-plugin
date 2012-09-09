@@ -50,8 +50,8 @@ public class Estimate implements Comparable<Estimate> {
     public double getDistanceFromCenter() {
         // calculate the distance to center if not already done
         if (!hasDistance) {
-            final double dx = estrx - x;
-            final double dy = estry - y;
+            final double dx = estrx - 0.5+x;
+            final double dy = estry - 0.5+y;
             centerDistance = Math.sqrt(dx*dx + dy*dy);
             hasDistance = true;
         }
