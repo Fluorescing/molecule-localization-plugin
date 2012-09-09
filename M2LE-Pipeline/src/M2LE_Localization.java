@@ -112,6 +112,8 @@ public class M2LE_Localization implements PlugIn {
                 if (debugMode) {
                     results.addValue("Minor Axis", estimate.getMinorAxis());
                     results.addValue("Major Axis", estimate.getMajorAxis());
+                    results.addValue("ROI x", estimate.getX()+0.5);
+                    results.addValue("ROI y", estimate.getY()+0.5);
                     
                     if (debugTable != null) {
                         for (int column = 0; debugTable.columnExists(column); column++) {
