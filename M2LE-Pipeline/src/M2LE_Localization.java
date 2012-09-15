@@ -37,11 +37,14 @@ public class M2LE_Localization implements PlugIn {
         }
         
         final boolean debugMode = job.getCheckboxValue(UserParams.DEBUG_MODE);
+        ResultsTable debugTable = null;
         
         final String debugTableTitle = job.getChoice(UserParams.DB_TABLE);
-        final TextPanel tp = ((TextWindow) WindowManager.getFrame(debugTableTitle)).getTextPanel();
-        final ResultsTable debugTable = (tp == null) ? null : tp.getResultsTable();
-        
+        if (!debugTableTitle.equals("")) {
+            final TextPanel tp = ((TextWindow) WindowManager.getFrame(debugTableTitle)).getTextPanel();
+            debugTable = (tp == null) ? null : tp.getResultsTable();
+        }
+    
         // load the image stack
         final StackContext stack = new StackContext(job);
         
@@ -64,9 +67,7 @@ public class M2LE_Localization implements PlugIn {
         IJ.showStatus("Testing Eccentricity...");
         
         // find subset of potential pixels that pass an eccentricity test
-        if (!job.getCheckboxValue(UserParams.ECC_DISABLED)) {
-            potential = EccentricityRejector.findSubset(stack, potential);
-        }
+        potential = EccentricityRejector.findSubset(stack, potential);
         
         IJ.showProgress(50, 100);
         IJ.showStatus("Localizing Molecules...");

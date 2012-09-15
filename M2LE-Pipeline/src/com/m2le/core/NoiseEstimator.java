@@ -31,7 +31,7 @@ public final class NoiseEstimator {
     
     private NoiseEstimator() { }
     
-    private static final int SIZE = 100;
+    private static final int SIZE = 1000;
     
     public static double estimateNoise(final StackContext stack, final ImageProcessor ip, final double scale) {
         final JobContext job = stack.getJobContext();

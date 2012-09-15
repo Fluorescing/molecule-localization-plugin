@@ -141,7 +141,10 @@ public class JobContext {
                         Prefs.get(param.id, param.checkbox));
                 break;
             case CHOICE:
-                dialog.addChoice(param.name, param.choice, param.choice[0]);
+                if (param.choice.length > 0)
+                    dialog.addChoice(param.name, param.choice, param.choice[0]);
+                else
+                    dialog.addChoice(param.name, new String[] {""}, "");
                 break;
             default:
                 break;

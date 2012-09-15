@@ -29,6 +29,8 @@ public final class EccentricityRejector {
     public static BlockingQueue<Estimate> findSubset(final StackContext stack, final BlockingQueue<Estimate> pixels) {
         final LinkedBlockingQueue<Estimate> eccpixels = new LinkedBlockingQueue<Estimate>();
         
+        final boolean disabled = stack.getJobContext().getCheckboxValue(UserParams.ECC_DISABLED);
+        
         final int numCPU = ThreadHelper.getProcessorCount();
         final Thread[] threads = new Thread[numCPU];
         
@@ -51,7 +53,7 @@ public final class EccentricityRejector {
                             updatePixel(stack, pixel);
                             
                             // put it back if it survived
-                            if (pixel.passed())
+                            if (pixel.passed() || disabled)
                                 eccpixels.put(pixel);
                             
                         } catch (InterruptedException e) {
