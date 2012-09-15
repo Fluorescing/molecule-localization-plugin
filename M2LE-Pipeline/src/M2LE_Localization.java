@@ -8,6 +8,7 @@ import com.m2le.core.LocatePotentialPixels;
 import com.m2le.core.MoleculeLocator;
 import com.m2le.core.RemoveDuplicates;
 import com.m2le.core.StackContext;
+import com.m2le.core.ThirdMomentRejector;
 import com.m2le.core.UserParams;
 
 import ij.IJ;
@@ -75,6 +76,12 @@ public class M2LE_Localization implements PlugIn {
         // transform the PE pixels into localization estimates
         BlockingQueue<Estimate> estimates = MoleculeLocator.findSubset(stack, potential);
         
+        IJ.showProgress(63, 100);
+        IJ.showStatus("Reticulating Splines...");
+        
+        // find subset of potential pixels that pass the third moments test
+        estimates = ThirdMomentRejector.findSubset(stack, estimates);
+        
         IJ.showProgress(75, 100);
         IJ.showStatus("Removing Duplicates...");
         
@@ -115,6 +122,9 @@ public class M2LE_Localization implements PlugIn {
                     results.addValue("Major Axis", estimate.getMajorAxis());
                     results.addValue("ROI x", estimate.getX()+0.5);
                     results.addValue("ROI y", estimate.getY()+0.5);
+                    
+                    results.addValue("thirdsum", estimate.getThirdMomentSum());
+                    results.addValue("thirddiff", estimate.getThirdMomentDiff());
                     
                     if (debugTable != null) {
                         for (int column = 0; debugTable.columnExists(column); column++) {

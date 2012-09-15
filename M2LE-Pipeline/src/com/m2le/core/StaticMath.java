@@ -171,8 +171,8 @@ public final class StaticMath {
                 
                 final double S = Math.max(ip.get(x, y) - noise, 0.0);
                 
-                centroid[0] += S*x;
-                centroid[1] += S*y;
+                centroid[0] += S*(x+0.5);
+                centroid[1] += S*(y+0.5);
                 
                 sum += S;
             }
@@ -200,9 +200,9 @@ public final class StaticMath {
                 
                 final double S = Math.max(ip.get(x, y) - noise, 0.0);
                 
-                moment[0] += S*x*x;
-                moment[1] += S*y*y;
-                moment[2] += S*x*y;
+                moment[0] += S*(x+0.5)*(x+0.5);
+                moment[1] += S*(y+0.5)*(y+0.5);
+                moment[2] += S*(x+0.5)*(y+0.5);
                 
                 sum += S;
             }
@@ -215,6 +215,54 @@ public final class StaticMath {
         moment[0] -= centroid[0]*centroid[0];
         moment[1] -= centroid[1]*centroid[1];
         moment[2] -= centroid[0]*centroid[1];
+        
+        return moment;
+    }
+    
+    public static double[] estimateThirdMoments(
+            final ImageProcessor ip, 
+            final double[] centroid, 
+            final int left, final int right, 
+            final int top, final int bottom,
+            final double noise,
+            final double wavelength,
+            final double width) {
+        
+        final double[] moment = {0.0, 0.0, 0.0, 0.0};
+        double sum = 0;
+        
+        final double alpha = 8.8857658763167324940317619801214/(wavelength*width);
+      
+        // find third moments
+        for (int x = left; x < right; x++) {
+            for (int y = top; y < bottom; y++) {
+                
+             final double S = Math.max(ip.get(x, y) - noise, 0.0);
+                
+             for (int i = 0; i < 10; i++) {
+              for (int j = 0; j < 10; j++) {
+                
+                final double x0 = (x+(i/10.+0.05)-centroid[0])*alpha;
+                final double y0 = (y+(j/10.+0.05)-centroid[1])*alpha;
+                
+                final double mask = Math.exp(-(x0*x0 + y0*y0));
+                
+                moment[0] += S*(   x0*(8.*x0*x0 - 12.) + 2.*x0*(4.*y0*y0 -  2.))*mask;
+                moment[1] += S*(   y0*(8.*y0*y0 - 12.) + 2.*y0*(4.*x0*x0 -  2.))*mask;
+                moment[2] += S*(6.*x0*(4.*y0*y0 -  2.)  -   x0*(8.*x0*x0 - 12.))*mask;
+                moment[3] += S*(   y0*(8.*y0*y0 - 12.) - 6.*y0*(4.*x0*x0 -  2.))*mask;
+                
+                sum += S;
+               
+              }
+             }
+             
+            }
+        }
+        moment[0] /= sum;
+        moment[1] /= sum;
+        moment[2] /= sum;
+        moment[3] /= sum;
         
         return moment;
     }

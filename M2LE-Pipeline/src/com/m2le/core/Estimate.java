@@ -10,6 +10,11 @@ public class Estimate implements Comparable<Estimate> {
     private double major;
     private double minor;
     
+    private double thirdmomentsum;
+    private double thirdmomentdiff;
+    
+    private double[] hu = new double[8];
+    
     private double estrx;
     private double estry;
     private double estIx;
@@ -176,5 +181,29 @@ public class Estimate implements Comparable<Estimate> {
             return 1;
         else
             return -1;
+    }
+
+    public double getThirdMomentSum() {
+        return thirdmomentsum;
+    }
+
+    public void setThirdMomentSum(double thirdmomentsum) {
+        this.thirdmomentsum = thirdmomentsum;
+    }
+
+    public double getThirdMomentDiff() {
+        return thirdmomentdiff;
+    }
+
+    public void setThirdMomentDiff(double thirdmomentdiff) {
+        this.thirdmomentdiff = thirdmomentdiff;
+    }
+    
+    public void setHu(int index, double value) {
+        hu[index] = value;
+    }
+    
+    public double getHu(int index) {
+        return hu[index];
     }
 }
