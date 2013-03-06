@@ -16,6 +16,8 @@
 
 package com.m2le.core;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -26,42 +28,64 @@ public final class EccentricityRejector {
     
     private EccentricityRejector() { };
     
-    public static BlockingQueue<Estimate> findSubset(final StackContext stack, final BlockingQueue<Estimate> pixels) {
-        final LinkedBlockingQueue<Estimate> eccpixels = new LinkedBlockingQueue<Estimate>();
+    public static class RejectionThread implements Runnable {
         
-        final boolean disabled = stack.getJobContext().getCheckboxValue(UserParams.ECC_DISABLED);
+        private StackContext stack;
+        private BlockingQueue<Estimate> pixels;
+        private BlockingQueue<Estimate> eccpixels;
+        
+        public RejectionThread(final StackContext stack, final BlockingQueue<Estimate> pixels, final BlockingQueue<Estimate> eccpixels) {
+            this.stack = stack;
+            this.pixels = pixels;
+            this.eccpixels = eccpixels;
+        }
+
+        @Override
+        public void run() {
+            
+            final boolean disabled = stack.getJobContext().getCheckboxValue(UserParams.ECC_DISABLED);
+            
+            // check all potential pixels
+            while (true) {
+                try {
+                    
+                    // get pixel
+                    final Estimate pixel = pixels.take();
+                    
+                    // check for the end of the queue
+                    if (pixel.isEndOfQueue())
+                        break;
+                    
+                    // process the pixel
+                    updatePixel(stack, pixel);
+                    
+                    // put it back if it survived
+                    if (pixel.passed() || disabled) {
+                        pixel.unreject();
+                        eccpixels.put(pixel);
+                    }
+                    
+                } catch (InterruptedException e) {
+                    IJ.handleException(e);
+                }
+            }
+        }      
+    }
+    
+    public static List<BlockingQueue<Estimate>> findSubset(final StackContext stack, final List<BlockingQueue<Estimate>> pixels) {
         
         final int numCPU = ThreadHelper.getProcessorCount();
         final Thread[] threads = new Thread[numCPU];
         
+        final List<BlockingQueue<Estimate>> eccpixels = new ArrayList<BlockingQueue<Estimate>>(numCPU);
+        
+        for (int i = 0; i < numCPU; i++) {
+            eccpixels.add(i, new LinkedBlockingQueue<Estimate>());
+        }
+        
         for (int n = 0; n < numCPU; n++) {
-            threads[n] = new Thread(String.format("EccentricityThread%d", n)) {
-                @Override
-                public void run() {
-                    // check all potential pixels
-                    while (true) {
-                        try {
-                            
-                            // get pixel
-                            final Estimate pixel = pixels.take();
-                            
-                            // check for the end of the queue
-                            if (pixel.isEndOfQueue())
-                                break;
-                            
-                            // process the pixel
-                            updatePixel(stack, pixel);
-                            
-                            // put it back if it survived
-                            if (pixel.passed() || disabled)
-                                eccpixels.put(pixel);
-                            
-                        } catch (InterruptedException e) {
-                            IJ.handleException(e);
-                        }
-                    }
-                }         
-            };
+            Runnable r = new RejectionThread(stack, pixels.get(n), eccpixels.get(n));
+            threads[n] = new Thread(r);
         }
         
         // start the threads

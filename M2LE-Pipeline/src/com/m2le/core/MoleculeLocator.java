@@ -16,8 +16,10 @@
 
 package com.m2le.core;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.PriorityBlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import ij.IJ;
 import ij.process.ByteProcessor;
@@ -27,44 +29,63 @@ public final class MoleculeLocator {
     
     private MoleculeLocator() { }
     
-    public static BlockingQueue<Estimate> findSubset(
-            final StackContext stack, 
-            final BlockingQueue<Estimate> pixels) {
+    public static class LocatorThread implements Runnable {
         
-        final PriorityBlockingQueue<Estimate> estimates = 
-                new PriorityBlockingQueue<Estimate>(pixels.size());
+        private StackContext stack;
+        private BlockingQueue<Estimate> pixels;
+        private BlockingQueue<Estimate> estimates;
+        
+        public LocatorThread(final StackContext stack, final BlockingQueue<Estimate> pixels, final BlockingQueue<Estimate> estimates) {
+            this.stack = stack;
+            this.pixels = pixels;
+            this.estimates = estimates;
+        }
+
+        @Override
+        public void run() {
+            
+            // check all potential pixels
+            while (true) {
+                try {
+                    
+                    // get pixel
+                    final Estimate estimate = pixels.take();
+                    
+                    // check for the end of the queue
+                    if (estimate.isEndOfQueue())
+                        break;
+                    
+                    // process the pixel
+                    findMaxLikelihood(stack, estimate);
+                    
+                    // put it back if it survived
+                    if (estimate.passed())
+                        estimates.put(estimate);
+                    
+                } catch (InterruptedException e) {
+                    IJ.handleException(e);
+                }
+            }
+        }      
+    }
+    
+    public static List<BlockingQueue<Estimate>> findSubset(
+            final StackContext stack, 
+            final List<BlockingQueue<Estimate>> pixels) {
         
         final int numCPU = ThreadHelper.getProcessorCount();
         final Thread[] threads = new Thread[numCPU];
         
+        final List<BlockingQueue<Estimate>> estimates = new ArrayList<BlockingQueue<Estimate>>(numCPU);
+        
+        for (int i = 0; i < numCPU; i++) {
+            estimates.add(i, new LinkedBlockingQueue<Estimate>());
+        }
+        
+        
         for (int n = 0; n < numCPU; n++) {
-            threads[n] = new Thread(String.format("MoleculeLocatorThread%d", n)) {
-                @Override
-                public void run() {
-                    // check all potential pixels
-                    while (true) {
-                        try {
-                            
-                            // get pixel
-                            final Estimate estimate = pixels.take();
-                            
-                            // check for the end of the queue
-                            if (estimate.isEndOfQueue())
-                                break;
-                            
-                            // process the pixel
-                            findMaxLikelihood(stack, estimate);
-                            
-                            // put it back if it survived
-                            if (estimate.passed())
-                                estimates.put(estimate);
-                            
-                        } catch (InterruptedException e) {
-                            IJ.handleException(e);
-                        }
-                    }
-                }
-            };
+            Runnable r = new LocatorThread(stack, pixels.get(n), estimates.get(n));
+            threads[n] = new Thread(r);
         }
         
         // start the threads

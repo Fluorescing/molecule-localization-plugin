@@ -1,8 +1,10 @@
 
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 
 import com.m2le.core.EccentricityRejector;
 import com.m2le.core.Estimate;
+import com.m2le.core.FunnelEstimates;
 import com.m2le.core.JobContext;
 import com.m2le.core.LocatePotentialPixels;
 import com.m2le.core.MoleculeLocator;
@@ -62,7 +64,7 @@ public class M2LE_Localization implements PlugIn {
         IJ.showStatus("Locating Potential Molecules...");
         
         // find all potential pixels
-        BlockingQueue<Estimate> potential = LocatePotentialPixels.findPotentialPixels(stack);
+        List<BlockingQueue<Estimate>> potential = LocatePotentialPixels.findPotentialPixels(stack);
         
         IJ.showProgress(25, 100);
         IJ.showStatus("Testing Eccentricity...");
@@ -74,10 +76,10 @@ public class M2LE_Localization implements PlugIn {
         IJ.showStatus("Localizing Molecules...");
         
         // transform the PE pixels into localization estimates
-        BlockingQueue<Estimate> estimates = MoleculeLocator.findSubset(stack, potential);
+        List<BlockingQueue<Estimate>> estimates = MoleculeLocator.findSubset(stack, potential);
         
         IJ.showProgress(63, 100);
-        IJ.showStatus("Reticulating Splines...");
+        IJ.showStatus("Testing Third Moments...");
         
         // find subset of potential pixels that pass the third moments test
         estimates = ThirdMomentRejector.findSubset(stack, estimates);
@@ -90,20 +92,21 @@ public class M2LE_Localization implements PlugIn {
         
         IJ.showProgress(100, 100);
         IJ.showStatus("Printing Results...");
+        BlockingQueue<Estimate> funnelled = FunnelEstimates.findSubset(stack, estimates);
         
         final int pixelSize = (int) job.getNumericValue(UserParams.PIXEL_SIZE);
         
         // add to results table
-        int SIZE = estimates.size();
+        int SIZE = funnelled.size()-1;
         while (true) {
             try {
                 // get pixel
-                final Estimate estimate = estimates.take();
+                final Estimate estimate = funnelled.take();
                 
                 // check for the end of the queue
                 if (estimate.isEndOfQueue())
                     break;
-
+                
                 results.incrementCounter();
                 results.addValue("Frame", estimate.getSlice());
                 results.addValue("x (px)", estimate.getXEstimate());

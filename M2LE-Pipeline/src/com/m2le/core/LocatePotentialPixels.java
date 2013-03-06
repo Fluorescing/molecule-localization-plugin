@@ -4,6 +4,8 @@ import ij.IJ;
 import ij.process.ByteProcessor;
 import ij.process.ImageProcessor;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -11,9 +13,15 @@ public final class LocatePotentialPixels {
     
     private LocatePotentialPixels() { }
     
-    public static BlockingQueue<Estimate> findPotentialPixels(StackContext stack) {
+    public static List<BlockingQueue<Estimate>> findPotentialPixels(StackContext stack) {
         
-        final LinkedBlockingQueue<Estimate> pixels = new LinkedBlockingQueue<Estimate>();
+        final int threads = ThreadHelper.getProcessorCount();
+        
+        final List<BlockingQueue<Estimate>> pixels = new ArrayList<BlockingQueue<Estimate>>(threads);
+        
+        for (int i = 0; i < threads; i++) {
+            pixels.add(i, new LinkedBlockingQueue<Estimate>());
+        }
         
         final JobContext job = stack.getJobContext();
         
@@ -48,7 +56,8 @@ public final class LocatePotentialPixels {
                     
                     if (S > noise*snCutoff) {
                         try {
-                            pixels.put(new Estimate(x, y, slice, S));
+                            final int i = Math.min(threads*slice/COUNT, threads-1);
+                            pixels.get(i).put(new Estimate(x, y, slice, S));
                         } catch (InterruptedException e) {
                             IJ.handleException(e);
                         }

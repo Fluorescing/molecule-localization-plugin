@@ -55,8 +55,8 @@ public class Estimate implements Comparable<Estimate> {
     public double getDistanceFromCenter() {
         // calculate the distance to center if not already done
         if (!hasDistance) {
-            final double dx = estrx - 0.5+x;
-            final double dy = estry - 0.5+y;
+            final double dx = estrx - (0.5+x);
+            final double dy = estry - (0.5+y);
             centerDistance = Math.sqrt(dx*dx + dy*dy);
             hasDistance = true;
         }
@@ -94,6 +94,10 @@ public class Estimate implements Comparable<Estimate> {
     
     public void reject() {
         this.rejected = true;
+    }
+    
+    public void unreject() {
+        this.rejected = false;
     }
     
     public boolean passed() {

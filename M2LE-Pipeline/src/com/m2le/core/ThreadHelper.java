@@ -1,5 +1,6 @@
 package com.m2le.core;
 
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 
 import ij.IJ;
@@ -12,12 +13,16 @@ public final class ThreadHelper {
         return Runtime.getRuntime().availableProcessors();
     }
     
-    public static void markEndOfQueue(BlockingQueue<Estimate> estimates) {
+    public static void markEndOfQueue(List<BlockingQueue<Estimate>> estimates) {
         // mark the end of the queue
         int numCPU = ThreadHelper.getProcessorCount();
         
         for (int n = 0; n < numCPU; n++)
-            estimates.add(new Estimate());
+            estimates.get(n).add(new Estimate());
+    }
+    
+    public static void markEndOfQueueSingle(BlockingQueue<Estimate> estimates) {
+        estimates.add(new Estimate());
     }
     
     public static void startThreads(final Thread[] threads) {

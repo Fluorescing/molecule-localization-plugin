@@ -16,6 +16,8 @@
 
 package com.m2le.core;
 
+import java.util.Random;
+
 import ij.process.ByteProcessor;
 import ij.process.ImageProcessor;
 
@@ -23,6 +25,8 @@ import ij.process.ImageProcessor;
 public final class StaticMath {
     
     private StaticMath() { }
+    
+    private static Random rand = new Random(System.currentTimeMillis());
     
     public static double calculateThreshold(double photons, double acc) {
         
@@ -35,19 +39,13 @@ public final class StaticMath {
         return A/Math.sqrt(photons - x0) + y0;
     }
     
-    /*public static double calculateThreshold(double photons, double acc) {
-        final double acc2 = acc*acc;
-        final double acc3 = acc2*acc;
-        final double acc4 = acc3*acc;
-        final double acc5 = acc4*acc;
-        
-        final double max = 0.10042 + 1.339e-6*Math.pow(acc, 2.4224);
-        final double base = 0.2585 + 2.8643e-8*Math.pow(acc, 3.4203);
-        final double rate = 4.1116 - 0.24717*acc + 0.0085424*acc2 - 0.00014249*acc3 + 1.1653e-6*acc4 - 3.7425e-9*acc5;
-        final double xhalf = -4190.8 + 427.36*acc - 13.766*acc2 + 0.21598*acc3 - 0.0016615*acc4 + 5.0288e-6*acc5; 
-        
-        return base + (max - base)/(1+Math.pow(xhalf/photons, rate));
-    }*/
+    public static double calculateThirdThreshold(double photons, double acc) {
+        final double A = 5.5801 + (-2.078e+5)/((acc - 147.95)*(acc - 147.95) - 1909.1);
+        final double x0 = -5135.6 + acc*(423.24 + acc*(-13.961 + acc*(0.22529 + acc*(-0.0017943 + acc*(5.648e-6)))));
+        final double y0 = -0.55942 + 30822.0/((acc - 183.86)*(acc - 183.86) - 6524.8);
+    
+        return A/Math.sqrt(photons - x0) + y0;
+    }
 
     public static double estimatePhotonCount(
             final ImageProcessor ip,
@@ -219,7 +217,15 @@ public final class StaticMath {
         return moment;
     }
     
-    public static double[] estimateThirdMoments(
+    public static double getThirdMomentSumScaling(double intensity) {
+        return 10.246 + 0.1697*intensity + 1.7027e-5*intensity*intensity + 9.3532e-13*intensity*intensity*intensity;
+    }
+    
+    public static double getThirdMomentDiffScaling(double intensity) {
+        return 41.227 + 0.64077*intensity + 3.6687e-6*intensity*intensity + 1.7874e-12*intensity*intensity*intensity;
+    }
+    
+    public static double[] calculateMonteCarloThirdMoments(
             final ImageProcessor ip, 
             final double[] centroid, 
             final int left, final int right, 
@@ -228,43 +234,62 @@ public final class StaticMath {
             final double wavelength,
             final double width) {
         
-        final double[] moment = {0.0, 0.0, 0.0, 0.0};
-        double sum = 0;
+        final double alpha = Math.sqrt(8.)*Math.PI/(wavelength*width);
+        final double beta = Math.sqrt(8.*Math.PI)/(wavelength*width);
         
-        final double alpha = 8.8857658763167324940317619801214/(wavelength*width);
-      
-        // find third moments
-        for (int x = left; x < right; x++) {
-            for (int y = top; y < bottom; y++) {
-                
-             final double S = Math.max(ip.get(x, y) - noise, 0.0);
-                
-             for (int i = 0; i < 10; i++) {
-              for (int j = 0; j < 10; j++) {
-                
-                final double x0 = (x+(i/10.+0.05)-centroid[0])*alpha;
-                final double y0 = (y+(j/10.+0.05)-centroid[1])*alpha;
-                
-                final double mask = Math.exp(-(x0*x0 + y0*y0));
-                
-                moment[0] += S*(   x0*(8.*x0*x0 - 12.) + 2.*x0*(4.*y0*y0 -  2.))*mask;
-                moment[1] += S*(   y0*(8.*y0*y0 - 12.) + 2.*y0*(4.*x0*x0 -  2.))*mask;
-                moment[2] += S*(6.*x0*(4.*y0*y0 -  2.)  -   x0*(8.*x0*x0 - 12.))*mask;
-                moment[3] += S*(   y0*(8.*y0*y0 - 12.) - 6.*y0*(4.*x0*x0 -  2.))*mask;
-                
-                sum += S;
-               
-              }
-             }
-             
+        // $\sqrt{2^{m+n}m!n!}$ 
+        final double f = 0.14433756729740644112728719512549;    // $m=3,n=0$
+        final double g = 0.25;                                  // $m=2,n=1$
+        
+        // number of samples
+        final int N = 5;
+        
+        // prepare modes for accumulation
+        double mode30 = 0.0;
+        double mode21 = 0.0;
+        double mode12 = 0.0;
+        double mode03 = 0.0;
+        
+        for (int i = 0; i < N; i++) {
+            
+            // vary the center from where we calculate our third moments
+            final double dx = (rand.nextDouble() - 0.5)/2.;
+            final double dy = (rand.nextDouble() - 0.5)/2.;
+            
+            // for all pixels in the region of interest, calculate modes
+            for (int x = left; x < right; x++) {
+                for (int y = top; y < bottom; y++) {
+                    
+                    // signal minus noise
+                    final double S = ip.get(x, y) - noise;
+                    
+                    final double x0 = (x + 0.5 - centroid[0] + dx)*alpha; 
+                    final double y0 = (y + 0.5 - centroid[1] + dy)*alpha;
+                    
+                    final double mask = Math.exp(-(x0*x0 + y0*y0)/2.);
+                    
+                    mode30 += S*beta*f*(x0*(8.*x0*x0 - 12.))*mask;
+                    mode21 += S*beta*g*(2.*y0)*(4.*x0*x0 - 2.)*mask;
+                    mode12 += S*beta*g*(2.*x0)*(4.*y0*y0 - 2.)*mask;
+                    mode03 += S*beta*f*(y0*(8.*y0*y0 - 12.))*mask;
+                }
             }
         }
-        moment[0] /= sum;
-        moment[1] /= sum;
-        moment[2] /= sum;
-        moment[3] /= sum;
         
-        return moment;
+        mode30 /= N;
+        mode21 /= N;
+        mode12 /= N;
+        mode03 /= N;
+        
+        double sum = 0.0;
+        double diff = 0.0;
+        
+        sum += (mode30 + mode12)*(mode30 + mode12) 
+             + (mode03 + mode21)*(mode03 + mode21);
+        diff += (3.*mode12 - mode30)*(3.*mode12 - mode30) 
+              + (mode03 - 3.*mode21)*(mode03 - 3.*mode21);
+        
+        return new double[] {sum, diff};
     }
 
     public static double[] findEigenValues(final double[] moment) {
