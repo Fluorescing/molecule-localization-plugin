@@ -181,7 +181,7 @@ public final class MoleculeLocator {
         final ImageProcessor ip  = stack.getImageProcessor(estimate.getSlice());
         
         // preferences and constants
-        final double wavenumber = 2.0*Math.PI/job.getNumericValue(UserParams.WAVELENGTH);
+        final double wavenumber = 2.0*Math.PI*job.getNumericValue(UserParams.N_APERTURE)/job.getNumericValue(UserParams.WAVELENGTH);
         final double pixelsize = job.getNumericValue(UserParams.PIXEL_SIZE);
         final double usablepixel = job.getNumericValue(UserParams.USABLE_PIXEL)/100.0;
         

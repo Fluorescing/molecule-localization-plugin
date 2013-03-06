@@ -91,7 +91,8 @@ public final class ThirdMomentRejector {
         final int x = estimate.getX();
         final int y = estimate.getY();
         
-        final double wavelength = stack.getJobContext().getNumericValue(UserParams.WAVELENGTH) / stack.getJobContext().getNumericValue(UserParams.PIXEL_SIZE);
+        final double effwavelength = job.getNumericValue(UserParams.WAVELENGTH) 
+                / (job.getNumericValue(UserParams.PIXEL_SIZE) * job.getNumericValue(UserParams.N_APERTURE));
         final double width = (estimate.getWidthEstimateX() + estimate.getWidthEstimateY())/2.0;
         
         // prevent out-of-bounds errors
@@ -107,7 +108,7 @@ public final class ThirdMomentRejector {
         
         // compute eigenvalues
         final double[] centroid = new double[] {estimate.getXEstimate(), estimate.getYEstimate()};
-        final double[] sumdiff = StaticMath.calculateMonteCarloThirdMoments(ip, centroid, left, right, top, bottom, noise, wavelength, width);
+        final double[] sumdiff = StaticMath.calculateMonteCarloThirdMoments(ip, centroid, left, right, top, bottom, noise, effwavelength, width);
         
         // save major/minor axis and eccentricity
         final double thirdsum = sumdiff[0]/StaticMath.getThirdMomentSumScaling(intensity);

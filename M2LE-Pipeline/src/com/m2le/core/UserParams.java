@@ -24,6 +24,7 @@ public final class UserParams {
     public static final String ECC_DISABLED = "M2LEPL.MR.DER";
     public static final String THRD_DISABLED = "M2LEPL.MR.DTR";
     public static final String WAVELENGTH = "M2LEPL.ML.LW";
+    public static final String N_APERTURE = "M2LEPL.ML.NA";
     public static final String USABLE_PIXEL = "M2LEPL.ML.UP";
     public static final String ML_POS_EPSILON = "M2LEPL.ML.PT";
     public static final String ML_INT_EPSILON = "M2LEPL.ML.IT";
@@ -74,24 +75,25 @@ public final class UserParams {
         job.addChoiceParam(DB_TABLE,            "Debug Table",  tables);
         
         job.addMessage("Molecule Rejection");
-        job.addNumericParam(ECC_THRESHOLD,      "Eccentricity Threshold",    .9,  1, "");
-        job.addNumericParam(THRD_THRESHOLD,     "Third Moment Threshold",    .9,  1, "");
+        job.addNumericParam(ECC_THRESHOLD,      "Eccentricity Threshold",    .9,  2, "");
+        job.addNumericParam(THRD_THRESHOLD,     "Third Moment Threshold",    .9,  2, "");
         job.addCheckboxParam(ECC_DISABLED,      "Disable Ellipticity Rejector", false);
         job.addCheckboxParam(THRD_DISABLED,     "Disable_Third Moment Rejector", false);
         
         job.addMessage("Maximum Likelihood Estimator");
         job.addNumericParam(WAVELENGTH,         "Light Wavelength",       550.0,  1, "nanometers");
+        job.addNumericParam(N_APERTURE,         "Numerical Aperture",       1.0,  2, "");
         job.addNumericParam(USABLE_PIXEL,       "Usable Pixel",            90.0,  1, "%");
         job.addNumericParam(ML_POS_EPSILON,     "Position Threshold",       0.0001, 4, "nanometers");
         job.addNumericParam(ML_INT_EPSILON,     "Intensity Threshold",      0.01,  4, "%");
-        job.addNumericParam(ML_WID_EPSILON,     "Width Threshold",          0.0001, 4, "???");
+        job.addNumericParam(ML_WID_EPSILON,     "Width Threshold",          0.0001, 4, "px");
         job.addNumericParam(ML_MAX_ITERATIONS,  "Maximum Iterations",      50.0,  0, "");
         
         job.addMessage("Parameter Bounds");
         job.addNumericParam(ML_MAX_NOISE,       "Max Noise Multiplier",     2.0,  0, "");
         job.addNumericParam(ML_MIN_NOISE,       "Min Noise Bound",          1.0,  2, "photons");
-        job.addNumericParam(ML_MAX_WIDTH,       "MaxWidth",                 3.0,  2, "???");
-        job.addNumericParam(ML_MIN_WIDTH,       "MinWidth",                 1.5,  2, "???");
+        job.addNumericParam(ML_MAX_WIDTH,       "MaxWidth",                 3.0,  2, "px");
+        job.addNumericParam(ML_MIN_WIDTH,       "MinWidth",                 1.5,  2, "px");
         
         job.addMessage(String.format("Version: %s", VERSION));
     }
