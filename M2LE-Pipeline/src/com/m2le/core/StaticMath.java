@@ -18,7 +18,6 @@ package com.m2le.core;
 
 import java.util.Random;
 
-import ij.process.ByteProcessor;
 import ij.process.ImageProcessor;
 
 //TODO: Remove the dependence on global noise estimates.
@@ -51,13 +50,14 @@ public final class StaticMath {
             final ImageProcessor ip,
             final int left, final int right, 
             final int top, final int bottom,
-            final double noise) {
+            final double noise,
+            final double scale) {
         
         double sum = 0.0;
         
         for (int x = left; x < right; x++) {
             for (int y = top; y < bottom; y++) {
-                sum += Math.max(ip.get(x, y) - noise, 0.0);
+                sum += Math.max(ip.get(x, y)/scale - noise, 0.0);
             }
         }
         
@@ -158,7 +158,8 @@ public final class StaticMath {
             final ImageProcessor ip,
             final int left, final int right, 
             final int top, final int bottom,
-            final double noise) {
+            final double noise,
+            final double scale) {
         
         final double[] centroid = {0,0};
         double sum = 0;
@@ -167,7 +168,7 @@ public final class StaticMath {
         for (int x = left; x < right; x++) {
             for (int y = top; y < bottom; y++) {
                 
-                final double S = Math.max(ip.get(x, y) - noise, 0.0);
+                final double S = Math.max(ip.get(x, y)/scale - noise, 0.0);
                 
                 centroid[0] += S*(x+0.5);
                 centroid[1] += S*(y+0.5);
@@ -187,7 +188,8 @@ public final class StaticMath {
             final double[] centroid, 
             final int left, final int right, 
             final int top, final int bottom,
-            final double noise) {
+            final double noise,
+            final double scale) {
         
         final double[] moment = {0.0, 0.0, 0.0};
         double sum = 0;
@@ -196,7 +198,7 @@ public final class StaticMath {
         for (int x = left; x < right; x++) {
             for (int y = top; y < bottom; y++) {
                 
-                final double S = Math.max(ip.get(x, y) - noise, 0.0);
+                final double S = Math.max(ip.get(x, y)/scale - noise, 0.0);
                 
                 moment[0] += S*(x+0.5)*(x+0.5);
                 moment[1] += S*(y+0.5)*(y+0.5);
@@ -232,7 +234,8 @@ public final class StaticMath {
             final int top, final int bottom,
             final double noise,
             final double wavelength,
-            final double width) {
+            final double width,
+            final double scale) {
         
         final double alpha = Math.sqrt(8.)*Math.PI/(wavelength*width);
         final double beta = Math.sqrt(8.*Math.PI)/(wavelength*width);
@@ -261,7 +264,7 @@ public final class StaticMath {
                 for (int y = top; y < bottom; y++) {
                     
                     // signal minus noise
-                    final double S = ip.get(x, y) - noise;
+                    final double S = ip.get(x, y)/scale - noise;
                     
                     final double x0 = (x + 0.5 - centroid[0] + dx)*alpha; 
                     final double y0 = (y + 0.5 - centroid[1] + dy)*alpha;
@@ -305,16 +308,9 @@ public final class StaticMath {
         return eigenValues;
     } 
     
-    public static double estimateNoise(final StackContext stack, final Estimate pixel) {
+    public static double estimateNoise(final StackContext stack, final Estimate pixel, final double scale) {
         
-        final JobContext job = stack.getJobContext();
         final ImageProcessor ip = stack.getImageProcessor(pixel.getSlice());
-        
-        // get the pixel scaling
-        int saturation = 65535;
-        if (ip instanceof ByteProcessor)
-            saturation = 255;
-        final double scale = saturation / job.getNumericValue(UserParams.SATURATION);
         
         double noiseEstimate = -1.0;
         

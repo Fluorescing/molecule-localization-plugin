@@ -22,6 +22,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import ij.IJ;
+import ij.process.ByteProcessor;
 import ij.process.ImageProcessor;
 
 public final class EccentricityRejector {
@@ -106,20 +107,26 @@ public final class EccentricityRejector {
         final int x = pixel.getX();
         final int y = pixel.getY();
         
+        // get the pixel scaling
+        int saturation = 65535;
+        if (ip instanceof ByteProcessor)
+            saturation = 255;
+        final double scale = saturation / job.getNumericValue(UserParams.SATURATION);
+        
         // prevent out-of-bounds errors
         final int left     = Math.max(0, x - 3);
         final int right    = Math.min(ip.getWidth(), x + 4);
         final int top      = Math.max(0, y - 3);
         final int bottom   = Math.min(ip.getHeight(), y + 4);
         
-        final double noise = StaticMath.estimateNoise(stack, pixel);
+        final double noise = StaticMath.estimateNoise(stack, pixel, scale);
         final double acceptance = job.getNumericValue(UserParams.ECC_THRESHOLD);
-        final double intensity = StaticMath.estimatePhotonCount(ip, left, right, top, bottom, noise);
+        final double intensity = StaticMath.estimatePhotonCount(ip, left, right, top, bottom, noise, scale);
         final double threshold = StaticMath.calculateThreshold(intensity, acceptance*100.0);
         
         // compute eigenvalues
-        final double[] centroid = StaticMath.estimateCentroid(ip, left, right, top, bottom, noise);
-        final double[] moments  = StaticMath.estimateSecondMoments(ip, centroid, left, right, top, bottom, noise);
+        final double[] centroid = StaticMath.estimateCentroid(ip, left, right, top, bottom, noise, scale);
+        final double[] moments  = StaticMath.estimateSecondMoments(ip, centroid, left, right, top, bottom, noise, scale);
         final double[] eigen    = StaticMath.findEigenValues(moments);
        
         final double eccentricity = Math.sqrt(1.0 - eigen[1]/eigen[0]);

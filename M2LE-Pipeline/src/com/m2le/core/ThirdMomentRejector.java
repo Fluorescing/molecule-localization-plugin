@@ -1,6 +1,7 @@
 package com.m2le.core;
 
 import ij.IJ;
+import ij.process.ByteProcessor;
 import ij.process.ImageProcessor;
 
 import java.util.ArrayList;
@@ -87,6 +88,12 @@ public final class ThirdMomentRejector {
         final ImageProcessor ip = stack.getImageProcessor(estimate.getSlice());
         final JobContext job = stack.getJobContext();
         
+        // get the pixel scaling
+        int saturation = 65535;
+        if (ip instanceof ByteProcessor)
+            saturation = 255;
+        final double scale = saturation / job.getNumericValue(UserParams.SATURATION);
+        
         // get the window dimensions
         final int x = estimate.getX();
         final int y = estimate.getY();
@@ -101,14 +108,14 @@ public final class ThirdMomentRejector {
         final int top      = Math.max(0, y - 3);
         final int bottom   = Math.min(ip.getHeight(), y + 4);
         
-        final double noise = StaticMath.estimateNoise(stack, estimate);
+        final double noise = StaticMath.estimateNoise(stack, estimate, scale);
         final double acceptance = job.getNumericValue(UserParams.THRD_THRESHOLD);
-        final double intensity = StaticMath.estimatePhotonCount(ip, left, right, top, bottom, noise);
+        final double intensity = StaticMath.estimatePhotonCount(ip, left, right, top, bottom, noise, scale);
         final double threshold = StaticMath.calculateThirdThreshold(intensity, acceptance*100.0);
         
         // compute eigenvalues
         final double[] centroid = new double[] {estimate.getXEstimate(), estimate.getYEstimate()};
-        final double[] sumdiff = StaticMath.calculateMonteCarloThirdMoments(ip, centroid, left, right, top, bottom, noise, effwavelength, width);
+        final double[] sumdiff = StaticMath.calculateMonteCarloThirdMoments(ip, centroid, left, right, top, bottom, noise, effwavelength, width, scale);
         
         // save major/minor axis and eccentricity
         final double thirdsum = sumdiff[0]/StaticMath.getThirdMomentSumScaling(intensity);
