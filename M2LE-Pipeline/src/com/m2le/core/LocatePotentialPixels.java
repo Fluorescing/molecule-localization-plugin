@@ -42,7 +42,7 @@ public final class LocatePotentialPixels {
             final double scale = saturation / job.getNumericValue(UserParams.SATURATION);
             
             // estimate noise
-            final double noise = NoiseEstimator.estimateNoise(stack, ip, scale);
+            final NoiseEstimator noise = new NoiseEstimator(stack, ip, scale);
             
             // for all pixels in the image
             final int W = ip.getWidth();
@@ -54,7 +54,7 @@ public final class LocatePotentialPixels {
                     // store potential pixels in the queue
                     final double S = ip.get(x, y) / scale;
                     
-                    if (S > noise*snCutoff) {
+                    if (S > noise.getNoiseEstimate(x, y)*snCutoff) {
                         try {
                             final int i = Math.min(threads*slice/COUNT, threads-1);
                             pixels.get(i).put(new Estimate(x, y, slice, S));

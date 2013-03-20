@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 package com.m2le.core;
+import java.util.Arrays;
+
 import ij.process.ImageProcessor;
 
 /**
@@ -27,36 +29,48 @@ import ij.process.ImageProcessor;
  *
  * @version $Id$
  */
-public final class NoiseEstimator {
+public class NoiseEstimator {
     
-    private NoiseEstimator() { }
+    private static final int WINDOW = 16;
     
-    private static final int SIZE = 1000;
+    private double[][] noisegrid;
     
-    public static double estimateNoise(final StackContext stack, final ImageProcessor ip, final double scale) {
+    public NoiseEstimator(final StackContext stack, final ImageProcessor ip, final double scale) {
         final JobContext job = stack.getJobContext();
         
-        final int histogram[] = new int[SIZE];
+        final double sorted[] = new double[WINDOW*WINDOW];
         
-        int max = 0;
-        int est = 0;
+        final int TILES_X = (int) Math.ceil((double) ip.getWidth() / WINDOW); 
+        final int TILES_Y = (int) Math.ceil((double) ip.getHeight() / WINDOW); 
         
-        // Generate histogram and locate mode
-        for (int x = 0; x < ip.getWidth(); x++) {
-            for (int y = 0; y < ip.getHeight(); y++) {
-                final double S = ip.get(x,y) / scale;
-                final int i = (int) S;
+        noisegrid = new double[TILES_X][TILES_Y];
+        
+        // Locate medians
+        for (int cx = 0; cx < TILES_X; cx++) {
+            for (int cy = 0; cy < TILES_Y; cy++) {
                 
-                if (i < SIZE) {
-                    histogram[i]++;
-                    if (histogram[i] > max) {
-                        max = histogram[i];
-                        est = i;
+                // store unsorted pixel values
+                for (int x = 0; (cx*WINDOW+x) < ip.getWidth() && x < WINDOW; x++) {
+                    for (int y = 0; (cy*WINDOW+y) < ip.getHeight() && y < WINDOW; y++) {
+                        final double S = ip.get(cx*WINDOW+x,cy*WINDOW+y) / scale;
+                        
+                        sorted[x + y*WINDOW] = S;
                     }
                 }
+                
+                // sort pixel values
+                Arrays.sort(sorted);
+                
+                // store the median
+                noisegrid[cx][cy] = Math.max(sorted[WINDOW*WINDOW/2], job.getNumericValue(UserParams.LOWEST_NOISE_EST));
             }
         }
+    }
+    
+    public double getNoiseEstimate(final int x, final int y) {
+        final int cx = x / WINDOW;
+        final int cy = y / WINDOW;
         
-        return Math.max(est, job.getNumericValue(UserParams.LOWEST_NOISE_EST));
+        return noisegrid[cx][cy];
     }
 }
