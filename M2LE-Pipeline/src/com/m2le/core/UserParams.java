@@ -11,7 +11,7 @@ public final class UserParams {
     
     private UserParams() { }
     
-    public static final String VERSION = "1.1.12-1";
+    public static final String VERSION = "1.1.14";
     
     public static final String SN_RATIO = "M2LEPL.IA.SNC";
     public static final String LOWEST_NOISE_EST = "M2LEPL.IA.LNE";
@@ -68,7 +68,7 @@ public final class UserParams {
         job.addNumericParam(SN_RATIO,           "SignalNoise Cutoff",       4.0,  2, "");
         job.addNumericParam(LOWEST_NOISE_EST,   "Lowest Noise Estimate",    2.0,  0, "photons");
         job.addNumericParam(PIXEL_SIZE,         "Pixel Size",             110.0,  2, "nanometers");
-        job.addNumericParam(SATURATION,         "Saturation Point",     65535.0,  2, "photons");
+        job.addNumericParam(SATURATION,         "Saturation Point",     65535.0,  2, "DN");
         
         job.addMessage("Debug Options");
         job.addCheckboxParam(DEBUG_MODE,        "Debug Mode",   false);
